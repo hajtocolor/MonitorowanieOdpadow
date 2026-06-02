@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "postbuild": "node ./scripts/copy-index-to-404.js",
     "preview": "vite preview",
+    "deploy": "echo \"Use GitHub Actions: git push origin main to deploy to GitHub Pages\"",
     "backend:dev": "cd backend && npm run dev"
   },
   "dependencies": {
