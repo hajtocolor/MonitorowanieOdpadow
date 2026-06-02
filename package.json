@@ -10,6 +10,7 @@
     "postbuild": "node ./scripts/copy-index-to-404.js",
     "preview": "vite preview",
     "deploy": "echo \"Use GitHub Actions: git push origin main to deploy to GitHub Pages\"",
+    "deploy:gh-pages": "git subtree push --prefix dist origin gh-pages",
     "backend:dev": "cd backend && npm run dev"
   },
   "dependencies": {
