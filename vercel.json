@@ -1,7 +1,6 @@
 {
-  "installCommand": "npm install --include=dev",
-  "nodeVersion": "20.x",
-  "buildCommand": "npx vite build",
+  "installCommand": "npm install",
+  "buildCommand": "node node_modules/vite/bin/vite.js build",
   "outputDirectory": "dist",
   "rewrites": [
     {
