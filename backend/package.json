@@ -7,8 +7,7 @@
     "dev": "ts-node --esm src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
-    "migrate:sqlite": "ts-node --esm src/scripts/migrate-sqlite-to-supabase.ts",
-    "postinstall": "npm run build"
+    "migrate:sqlite": "ts-node --esm src/scripts/migrate-sqlite-to-supabase.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",
