@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -12,11 +13,21 @@ const repoRoot = path.resolve(__dirname, '..', '..');
 dotenv.config({ path: path.resolve(repoRoot, '.env.local') });
 dotenv.config({ path: path.resolve(repoRoot, '.env') });
 
+// === CONFIG FROM ENV ===
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const JWT_SECRET = process.env.JWT_SECRET;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const WORKER_PASSWORD = process.env.WORKER_PASSWORD;
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error('Brak konfiguracji Supabase: ustaw SUPABASE_URL oraz SUPABASE_SERVICE_ROLE_KEY');
+}
+if (!JWT_SECRET) {
+  throw new Error('Ustaw JWT_SECRET w zmiennych środowiskowych');
+}
+if (!ADMIN_PASSWORD || !WORKER_PASSWORD) {
+  throw new Error('Ustaw ADMIN_PASSWORD i WORKER_PASSWORD w zmiennych środowiskowych');
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -28,32 +39,74 @@ app.use(cors({
 }));
 app.use(express.json());
 
-const CREDENTIALS: Record<'admin' | 'worker', string> = {
-  admin: 'admin123',
-  worker: 'worker123',
-};
+// === JWT MIDDLEWARE ===
+interface JwtPayload {
+  role: 'admin' | 'worker';
+}
 
-function getRole(req: express.Request): 'admin' | 'worker' | null {
-  const raw = String(req.header('x-user-role') || '').toLowerCase();
-  if (raw === 'admin' || raw === 'worker') {
-    return raw;
+function authenticateToken(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Brak tokenu autoryzacyjnego' });
   }
-  return null;
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET as string) as unknown as JwtPayload;
+    (req as any).user = decoded;
+    next();
+  } catch {
+    return res.status(403).json({ error: 'Token wygasł lub jest nieprawidłowy' });
+  }
 }
 
 function requireRole(allowed: Array<'admin' | 'worker'>) {
   return (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const role = getRole(req);
-    if (!role || !allowed.includes(role)) {
+    const user = (req as any).user as JwtPayload | undefined;
+    if (!user || !allowed.includes(user.role)) {
       return res.status(403).json({ error: 'Brak uprawnień' });
     }
     next();
   };
 }
 
-function validateCredentials(role: string, password: string) {
-  return (role === 'admin' || role === 'worker') && CREDENTIALS[role] === password;
-}
+// === PUBLIC ENDPOINTS ===
+
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true });
+});
+
+app.post('/api/login', (req, res) => {
+  const { role, password } = req.body;
+
+  if (role === 'admin' && password === ADMIN_PASSWORD) {
+    const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '24h' });
+    return res.json({ role: 'admin', token });
+  }
+
+  if (role === 'worker' && password === WORKER_PASSWORD) {
+    const token = jwt.sign({ role: 'worker' }, JWT_SECRET, { expiresIn: '24h' });
+    return res.json({ role: 'worker', token });
+  }
+
+  return res.status(401).json({ error: 'Nieprawidłowy login lub hasło' });
+});
+
+// === PROTECTED ENDPOINTS (require auth) ===
+
+app.get('/api/entries', authenticateToken, async (_req, res) => {
+  const { data, error } = await supabase
+    .from('entries')
+    .select('*')
+    .order('createdAt', { ascending: false });
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  res.json(data ?? []);
+});
 
 function validateEntry(body: any) {
   const { id, date, time, machineId, classificationNumber, binNumber, reason, weightKg, comment, createdAt } = body;
@@ -83,28 +136,7 @@ type WasteEntryRow = {
   createdAt: string;
 };
 
-app.get('/api/entries', async (req, res) => {
-  const { data, error } = await supabase
-    .from('entries')
-    .select('*')
-    .order('createdAt', { ascending: false });
-
-  if (error) {
-    return res.status(500).json({ error: error.message });
-  }
-
-  res.json(data ?? []);
-});
-
-app.post('/api/login', (req, res) => {
-  const { role, password } = req.body;
-  if (!validateCredentials(role, password)) {
-    return res.status(401).json({ error: 'Nieprawidłowy login lub hasło' });
-  }
-  res.json({ role });
-});
-
-app.post('/api/entries', async (req, res) => {
+app.post('/api/entries', authenticateToken, async (req, res) => {
   const errorMessage = validateEntry(req.body);
   if (errorMessage) return res.status(400).json({ error: errorMessage });
 
@@ -132,7 +164,7 @@ app.post('/api/entries', async (req, res) => {
   res.status(201).json(data?.[0] ?? entry);
 });
 
-app.delete('/api/entries/:id', requireRole(['admin']), async (req, res) => {
+app.delete('/api/entries/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
   const { data, error } = await supabase
     .from('entries')
     .delete()
@@ -150,16 +182,12 @@ app.delete('/api/entries/:id', requireRole(['admin']), async (req, res) => {
   res.status(204).send();
 });
 
-app.delete('/api/entries', requireRole(['admin']), async (req, res) => {
+app.delete('/api/entries', authenticateToken, requireRole(['admin']), async (_req, res) => {
   const { error } = await supabase.from('entries').delete().neq('id', '');
   if (error) {
     return res.status(500).json({ error: error.message });
   }
   res.status(204).send();
-});
-
-app.get('/api/health', (req, res) => {
-  res.json({ ok: true });
 });
 
 const port = process.env.PORT ? Number(process.env.PORT) : 4000;
