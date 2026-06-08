@@ -23,6 +23,8 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
       if (search) {
         const q = search.toLowerCase();
         if (!e.machineId.toLowerCase().includes(q) &&
+            !e.classificationNumber.toLowerCase().includes(q) &&
+            !e.binNumber.toLowerCase().includes(q) &&
             !e.comment?.toLowerCase().includes(q) &&
             !e.date.includes(q)) return false;
       }
@@ -34,11 +36,13 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 
   const exportCSV = () => {
-    const header = ['Data', 'Godzina', 'Maszyna', 'Przyczyna', 'Waga_kg', 'Komentarz'];
+    const header = ['Data', 'Godzina', 'Maszyna', 'Klasyfikacja', 'Pojemnik', 'Przyczyna', 'Waga_kg', 'Komentarz'];
     const rows = filtered.map(e => [
       e.date,
       e.time,
       e.machineId,
+      e.classificationNumber,
+      e.binNumber,
       REASONS[e.reason].label,
       e.weightKg.toString().replace('.', ','),
       e.comment ?? '',
@@ -157,6 +161,8 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
                     <th className="px-5 py-3 text-left font-semibold text-slate-500">Data</th>
                     <th className="px-3 py-3 text-left font-semibold text-slate-500">Godz.</th>
                     <th className="px-3 py-3 text-left font-semibold text-slate-500">Maszyna</th>
+                    <th className="px-3 py-3 text-left font-semibold text-slate-500">Klasyfikacja</th>
+                    <th className="px-3 py-3 text-left font-semibold text-slate-500">Pojemnik</th>
                     <th className="px-3 py-3 text-left font-semibold text-slate-500">Przyczyna</th>
                     <th className="px-3 py-3 text-right font-semibold text-slate-500">Waga</th>
                     <th className="px-3 py-3 text-left font-semibold text-slate-500">Komentarz</th>
@@ -175,6 +181,8 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
                         <td className="px-3 py-3">
                           <span className="font-bold text-slate-800">{entry.machineId}</span>
                         </td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{entry.classificationNumber}</td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{entry.binNumber}</td>
                         <td className="px-3 py-3">
                           <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${r.bg} ${r.color} ${r.border}`}>
                             {r.emoji} {r.label}
@@ -209,6 +217,11 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-slate-800">{entry.machineId}</span>
                         <span className="text-xs text-slate-400">{entry.date} {entry.time}</span>
+                      </div>
+                      <div className="mt-0.5 text-xs text-slate-500">
+                        Klasyfikacja: <span className="font-semibold text-slate-700">{entry.classificationNumber}</span>
+                        <span className="mx-2">•</span>
+                        Pojemnik: <span className="font-semibold text-slate-700">{entry.binNumber}</span>
                       </div>
                       <div className={`mt-0.5 text-xs font-medium ${r.color}`}>{r.label}</div>
                       {entry.comment && <div className="text-xs text-slate-400 truncate">{entry.comment}</div>}

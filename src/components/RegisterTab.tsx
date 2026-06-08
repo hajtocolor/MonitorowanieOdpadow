@@ -20,6 +20,8 @@ interface Props {
 
 export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete }: Props) {
   const [machine, setMachine] = useState('');
+  const [classificationNumber, setClassificationNumber] = useState('');
+  const [binNumber, setBinNumber] = useState('');
   const [reason, setReason] = useState<WasteReason>('procesowy');
   const [weight, setWeight] = useState('');
   const [comment, setComment] = useState('');
@@ -37,6 +39,8 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!machine) { setError('Wybierz numer maszyny.'); return; }
+    if (!classificationNumber.trim()) { setError('Podaj numer klasyfikacji odpadu.'); return; }
+    if (!binNumber.trim()) { setError('Podaj numer pojemnika.'); return; }
     const w = parseFloat(weight.replace(',', '.'));
     if (isNaN(w) || w <= 0) { setError('Podaj poprawną wagę (np. 3.5).'); return; }
     if (w > 1000) { setError('Waga wydaje się za duża. Sprawdź jednostkę (kg).'); return; }
@@ -47,12 +51,16 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
       date: current.date,
       time: current.time,
       machineId: machine,
+      classificationNumber: classificationNumber.trim(),
+      binNumber: binNumber.trim(),
       reason,
       weightKg: w,
       comment: comment.trim() || undefined,
     });
 
     setWeight('');
+    setClassificationNumber('');
+    setBinNumber('');
     setComment('');
     setSuccess(true);
     if (timer.current) clearTimeout(timer.current);
@@ -111,6 +119,33 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
                     <option key={m.id} value={m.id}>{m.label}</option>
                   ))}
                 </select>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                    Nr klasyfikacji odpadu <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={classificationNumber}
+                    onChange={e => setClassificationNumber(e.target.value)}
+                    placeholder="np. 17.03.04"
+                    className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700 transition focus:border-blue-500 focus:bg-white focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                    Nr pojemnika <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={binNumber}
+                    onChange={e => setBinNumber(e.target.value)}
+                    placeholder="np. 3"
+                    className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700 transition focus:border-blue-500 focus:bg-white focus:outline-none"
+                  />
+                </div>
               </div>
 
               {/* Reason */}
@@ -253,6 +288,10 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
                       <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${r.bg} ${r.color} ${r.border} border`}>
                         {r.label}
                       </span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500">
+                      <span>Klasyfikacja: <strong>{entry.classificationNumber}</strong></span>
+                      <span>Pojemnik: <strong>{entry.binNumber}</strong></span>
                     </div>
                     {entry.comment && (
                       <p className="truncate text-xs text-slate-400">{entry.comment}</p>

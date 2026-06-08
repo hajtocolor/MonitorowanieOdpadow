@@ -1,7 +1,7 @@
 import { WasteEntry } from './types';
 import { getRoleHeader } from './auth';
 
-const API_PREFIX = '/api';
+const API_PREFIX = import.meta.env.VITE_API_URL || '/api';
 
 function buildHeaders(json = true) {
   const headers: Record<string, string> = {

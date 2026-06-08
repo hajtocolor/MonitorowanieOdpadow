@@ -22,7 +22,10 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || '*',
+  credentials: true,
+}));
 app.use(express.json());
 
 const CREDENTIALS: Record<'admin' | 'worker', string> = {
@@ -53,10 +56,12 @@ function validateCredentials(role: string, password: string) {
 }
 
 function validateEntry(body: any) {
-  const { id, date, time, machineId, reason, weightKg, comment, createdAt } = body;
+  const { id, date, time, machineId, classificationNumber, binNumber, reason, weightKg, comment, createdAt } = body;
   if (typeof date !== 'string' || !date) return 'Nieprawidłowa data';
   if (typeof time !== 'string' || !time) return 'Nieprawidłowa godzina';
   if (typeof machineId !== 'string' || !machineId) return 'Nieprawidłowy numer maszyny';
+  if (typeof classificationNumber !== 'string' || !classificationNumber.trim()) return 'Nieprawidłowy numer klasyfikacji odpadu';
+  if (typeof binNumber !== 'string' || !binNumber.trim()) return 'Nieprawidłowy numer pojemnika';
   if (typeof reason !== 'string' || !['awaria', 'blad_operatora', 'procesowy'].includes(reason)) return 'Nieprawidłowa przyczyna';
   if (typeof weightKg !== 'number' || Number.isNaN(weightKg) || weightKg <= 0) return 'Nieprawidłowa waga';
   if (comment !== undefined && typeof comment !== 'string') return 'Nieprawidłowy komentarz';
@@ -70,6 +75,8 @@ type WasteEntryRow = {
   date: string;
   time: string;
   machineId: string;
+  classificationNumber: string;
+  binNumber: string;
   reason: string;
   weightKg: number;
   comment: string | null;
@@ -109,6 +116,8 @@ app.post('/api/entries', async (req, res) => {
     date: req.body.date,
     time: req.body.time,
     machineId: req.body.machineId,
+    classificationNumber: req.body.classificationNumber,
+    binNumber: req.body.binNumber,
     reason: req.body.reason,
     weightKg: req.body.weightKg,
     comment: req.body.comment ?? null,
@@ -155,5 +164,5 @@ app.get('/api/health', (req, res) => {
 
 const port = process.env.PORT ? Number(process.env.PORT) : 4000;
 app.listen(port, () => {
-  console.log(`Backend WasteTrack uruchomiony na http://localhost:${port}`);
+  console.log(`Backend uruchomiony na porcie ${port}`);
 });

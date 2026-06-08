@@ -2,11 +2,19 @@ import { useState, useEffect, useCallback } from 'react';
 import { WasteEntry, STORAGE_KEY } from './types';
 import { getEntries, createEntry, deleteEntryApi, clearEntriesApi } from './api';
 
+function normalizeEntry(entry: any): WasteEntry {
+  return {
+    ...entry,
+    classificationNumber: entry.classificationNumber ?? '',
+    binNumber: entry.binNumber ?? '',
+  } as WasteEntry;
+}
+
 function loadEntries(): WasteEntry[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return generateSampleData();
-    return JSON.parse(raw) as WasteEntry[];
+    return (JSON.parse(raw) as any[]).map(normalizeEntry);
   } catch {
     return generateSampleData();
   }
@@ -56,6 +64,8 @@ function generateSampleData(): WasteEntry[] {
         date: dateStr,
         time: timeStr,
         machineId: machine,
+        classificationNumber: [`12.01.01`, `17.03.04`, `18.02.05`, `20.01.02`][Math.floor(Math.random() * 4)],
+        binNumber: String(Math.floor(Math.random() * 5) + 1),
         reason,
         weightKg: weight,
         comment: comment || undefined,
@@ -83,7 +93,7 @@ export function useWasteStore() {
   useEffect(() => {
     getEntries()
       .then(remoteEntries => {
-        setEntries(remoteEntries);
+        setEntries(remoteEntries.map(normalizeEntry));
         setBackendAvailable(true);
       })
       .catch(() => {
