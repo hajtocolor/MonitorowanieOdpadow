@@ -24,15 +24,6 @@ function saveEntries(entries: WasteEntry[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
 }
 
-function pad(n: number): string {
-  return String(n).padStart(2, '0');
-}
-
-function randomBetween(a: number, b: number): number {
-  return Math.round((Math.random() * (b - a) + a) * 10) / 10;
-}
-
-
 function makeEntry(entry: Omit<WasteEntry, 'id' | 'createdAt'>): WasteEntry {
   const now = new Date();
   return {

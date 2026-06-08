@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { REASONS, WasteReason } from '../types';
+import { useState, useCallback } from 'react';
+import { REASONS, WasteReason, MACHINES } from '../types';
+import QRCode from 'qrcode';
 
 const QR_BINS = [
   {
@@ -11,12 +12,7 @@ const QR_BINS = [
     border: 'border-red-300',
     textClass: 'text-red-700',
     qrBg: '#ef4444',
-    instructions: [
-      'Zważ odpad na wadze przemysłowej',
-      'Wrzuć do CZERWONEGO pojemnika',
-      'Zeskanuj ten kod QR',
-      'Wpisz TYLKO: numer maszyny + wagę',
-    ],
+    classificationNumber: '12.01.01',
   },
   {
     reason: 'blad_operatora' as WasteReason,
@@ -27,12 +23,7 @@ const QR_BINS = [
     border: 'border-yellow-300',
     textClass: 'text-yellow-700',
     qrBg: '#eab308',
-    instructions: [
-      'Zważ odpad na wadze przemysłowej',
-      'Wrzuć do ŻÓŁTEGO pojemnika',
-      'Zeskanuj ten kod QR',
-      'Wpisz TYLKO: numer maszyny + wagę',
-    ],
+    classificationNumber: '17.03.04',
   },
   {
     reason: 'procesowy' as WasteReason,
@@ -43,64 +34,69 @@ const QR_BINS = [
     border: 'border-slate-300',
     textClass: 'text-slate-600',
     qrBg: '#94a3b8',
-    instructions: [
-      'Zważ odpad na wadze przemysłowej',
-      'Wrzuć do SZAREGO pojemnika',
-      'Zeskanuj ten kod QR',
-      'Wpisz TYLKO: numer maszyny + wagę',
-    ],
+    classificationNumber: '18.02.05',
   },
 ];
 
-// Simple QR-code-like SVG placeholder (visual only - represents where a real QR would go)
-function QRPlaceholder({ color, label }: { color: string; label: string }) {
-  const size = 120;
-  const cell = size / 12;
-  // Generate a deterministic pseudo-QR pattern based on label
-  const pattern = Array.from({ length: 12 }, (_, row) =>
-    Array.from({ length: 12 }, (_, col) => {
-      // Corner squares
-      if ((row < 3 && col < 3) || (row < 3 && col > 8) || (row > 8 && col < 3)) return true;
-      if ((row === 3 && col < 3) || (row === 3 && col > 8) || (row === 3 && col < 3)) return false;
-      // Data area - deterministic hash
-      const code = label.charCodeAt((row * 12 + col) % label.length);
-      return (row * 7 + col * 11 + code) % 3 !== 0;
-    })
-  );
+interface QRCodeImageProps {
+  url: string;
+  label: string;
+}
+
+function QRCodeImage({ url, label }: QRCodeImageProps) {
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
+
+  useCallback(() => {
+    QRCode.toDataURL(url, {
+      width: 200,
+      margin: 2,
+      color: { dark: '#1e293b', light: '#ffffff' },
+    }).then(setDataUrl).catch(() => {});
+  }, [url]);
+
+  // Generate QR on mount/url change
+  if (!dataUrl) {
+    QRCode.toDataURL(url, {
+      width: 200,
+      margin: 2,
+      color: { dark: '#1e293b', light: '#ffffff' },
+    }).then(setDataUrl).catch(() => {});
+  }
+
+  if (!dataUrl) {
+    return (
+      <div className="flex items-center justify-center" style={{ width: 200, height: 200 }}>
+        <span className="text-sm text-slate-400">Generowanie QR...</span>
+      </div>
+    );
+  }
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display: 'block' }}>
-      <rect width={size} height={size} fill="white" rx={6} />
-      {pattern.map((row, r) =>
-        row.map((filled, c) =>
-          filled ? (
-            <rect
-              key={`${r}-${c}`}
-              x={c * cell}
-              y={r * cell}
-              width={cell - 1}
-              height={cell - 1}
-              fill={color}
-              rx={1}
-            />
-          ) : null
-        )
-      )}
-      {/* Finder patterns (corners) */}
-      {[[0, 0], [0, 9], [9, 0]].map(([cr, cc]) => (
-        <g key={`fp-${cr}-${cc}`}>
-          <rect x={cc * cell} y={cr * cell} width={3 * cell} height={3 * cell} fill={color} rx={2} />
-          <rect x={cc * cell + 3} y={cr * cell + 3} width={3 * cell - 6} height={3 * cell - 6} fill="white" rx={1} />
-          <rect x={cc * cell + 6} y={cr * cell + 6} width={3 * cell - 12} height={3 * cell - 12} fill={color} rx={1} />
-        </g>
-      ))}
-    </svg>
+    <div className="flex flex-col items-center">
+      <img src={dataUrl} alt={`QR dla ${label}`} width={200} height={200} className="rounded-lg" />
+      <p className="mt-2 text-xs text-slate-500 text-center break-all max-w-[220px]">{url}</p>
+    </div>
   );
 }
 
 export default function QRTab() {
+  const [selectedMachine, setSelectedMachine] = useState(MACHINES[0]?.id || 'M01');
   const [selectedBin, setSelectedBin] = useState<number | null>(null);
-  const currentUrl = typeof window !== 'undefined' ? window.location.href : 'http://localhost:5173';
+  const bin = selectedBin !== null ? QR_BINS[selectedBin] : null;
+
+  const appUrl = typeof window !== 'undefined'
+    ? `${window.location.protocol}//${window.location.host}`
+    : 'https://monitorowanieodpadow.vercel.app';
+
+  const generateQrUrl = (machineId: string, reason: WasteReason, classificationNumber: string, binNumber: string) => {
+    const params = new URLSearchParams({
+      machine: machineId,
+      reason,
+      classificationNumber,
+      binNumber,
+    });
+    return `${appUrl}?${params.toString()}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -110,7 +106,7 @@ export default function QRTab() {
           <div>
             <h2 className="text-xl font-bold">🚀 Faza 2 – Kody QR na pojemnikach</h2>
             <p className="mt-1 text-indigo-100 text-sm">
-              Wdrożenie po 2 tygodniach stabilnej pracy systemu. Operator skanuje → wpisuje tylko wagę → gotowe.
+              Operator skanuje → wpisuje tylko wagę → gotowe. Kody QR zawierają informacje o stanowisku i pojemniku.
             </p>
           </div>
           <div className="rounded-xl bg-white/20 px-3 py-1.5 text-sm font-semibold">
@@ -133,85 +129,142 @@ export default function QRTab() {
         </div>
       </div>
 
-      {/* Bin cards */}
+      {/* Machine selector */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 className="text-sm font-bold uppercase tracking-widest text-slate-500 mb-3">
+          🏭 Wybierz stanowisko / maszynę
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {MACHINES.map(m => (
+            <button
+              key={m.id}
+              onClick={() => setSelectedMachine(m.id)}
+              className={`rounded-xl px-4 py-2 text-sm font-semibold transition border-2 ${
+                selectedMachine === m.id
+                  ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Bin cards with QR */}
       <div className="grid gap-4 sm:grid-cols-3">
-        {QR_BINS.map((bin, idx) => {
-          const r = REASONS[bin.reason];
+        {QR_BINS.map((binItem, idx) => {
+          const r = REASONS[binItem.reason];
           return (
             <div
-              key={bin.reason}
-              className={`rounded-2xl border-2 ${bin.border} ${bin.lightBg} p-5 cursor-pointer transition hover:shadow-md ${selectedBin === idx ? 'ring-2 ring-indigo-500 ring-offset-2' : ''}`}
+              key={binItem.reason}
+              className={`rounded-2xl border-2 ${binItem.border} ${binItem.lightBg} p-5 cursor-pointer transition hover:shadow-md ${selectedBin === idx ? 'ring-2 ring-indigo-500 ring-offset-2' : ''}`}
               onClick={() => setSelectedBin(prev => prev === idx ? null : idx)}
             >
               {/* Bin visual */}
-              <div className={`mx-auto mb-4 h-20 w-16 rounded-t-lg ${bin.bgClass} relative shadow-lg flex items-end justify-center pb-2`}>
+              <div className={`mx-auto mb-4 h-20 w-16 rounded-t-lg ${binItem.bgClass} relative shadow-lg flex items-end justify-center pb-2`}>
                 <span className="text-white text-2xl font-black opacity-90">{r.emoji}</span>
                 <div className="absolute -top-2 left-1/2 -translate-x-1/2 h-3 w-14 rounded-t-sm bg-white/30"></div>
               </div>
 
-              <h3 className={`text-center text-sm font-black ${bin.textClass}`}>{bin.title}</h3>
-              <p className="text-center text-xs text-slate-500 mt-0.5">{bin.subtitle}</p>
+              <h3 className={`text-center text-sm font-black ${binItem.textClass}`}>{binItem.title}</h3>
+              <p className="text-center text-xs text-slate-500 mt-0.5">{binItem.subtitle}</p>
 
-              {/* QR placeholder */}
+              {/* QR code */}
               <div className="mt-4 flex justify-center">
-                <div className="rounded-xl border-2 border-dashed border-slate-300 p-3 bg-white">
-                  <QRPlaceholder color={bin.qrBg} label={bin.reason} />
-                  <p className="mt-2 text-center text-xs text-slate-400">Przykładowy QR</p>
+                <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <QRCodeImage
+                    url={generateQrUrl(
+                      selectedMachine,
+                      binItem.reason,
+                      binItem.classificationNumber,
+                      `${idx + 1}`
+                    )}
+                    label={`${binItem.title} - ${selectedMachine}`}
+                  />
                 </div>
               </div>
 
-              <button className={`mt-3 w-full rounded-xl py-2 text-xs font-bold text-white ${bin.bgClass} opacity-80 hover:opacity-100 transition`}>
-                🖨️ Drukuj kod dla tego pojemnika
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const url = generateQrUrl(
+                    selectedMachine,
+                    binItem.reason,
+                    binItem.classificationNumber,
+                    `${idx + 1}`
+                  );
+                  QRCode.toDataURL(url, { width: 400, margin: 2 }).then(dataUrl => {
+                    const link = document.createElement('a');
+                    link.download = `qr-${binItem.reason}-${selectedMachine}.png`;
+                    link.href = dataUrl;
+                    link.click();
+                  });
+                }}
+                className={`mt-3 w-full rounded-xl py-2 text-xs font-bold text-white ${binItem.bgClass} opacity-80 hover:opacity-100 transition`}
+              >
+                🖨️ Pobierz QR
               </button>
             </div>
           );
         })}
       </div>
 
-      {/* Selected bin instructions */}
-      {selectedBin !== null && (
-        <div className={`rounded-2xl border-2 ${QR_BINS[selectedBin].border} ${QR_BINS[selectedBin].lightBg} p-6`}>
-          <h3 className={`text-base font-bold ${QR_BINS[selectedBin].textClass} mb-4`}>
-            📋 Instrukcja dla pojemnika: {QR_BINS[selectedBin].title}
+      {/* Selected bin info */}
+      {selectedBin !== null && bin && (
+        <div className={`rounded-2xl border-2 ${bin.border} ${bin.lightBg} p-6`}>
+          <h3 className={`text-base font-bold ${bin.textClass} mb-4`}>
+            📋 Podgląd danych w QR dla: {bin.title}
           </h3>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {QR_BINS[selectedBin].instructions.map((step, i) => (
-              <div key={i} className="flex items-start gap-3 rounded-xl bg-white/70 p-3">
-                <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${QR_BINS[selectedBin].bgClass} text-white text-xs font-bold`}>
-                  {i + 1}
-                </span>
-                <span className="text-sm text-slate-700">{step}</span>
-              </div>
-            ))}
+          <div className="grid gap-3">
+            <div className="flex items-center justify-between rounded-xl bg-white/70 p-3">
+              <span className="text-sm text-slate-600">Stanowisko / Maszyna</span>
+              <span className="font-bold text-slate-800">{selectedMachine}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-white/70 p-3">
+              <span className="text-sm text-slate-600">Przyczyna</span>
+              <span className="font-bold text-slate-800">{REASONS[bin.reason].label}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-white/70 p-3">
+              <span className="text-sm text-slate-600">Nr klasyfikacji</span>
+              <span className="font-bold text-slate-800">{bin.classificationNumber}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-white/70 p-3">
+              <span className="text-sm text-slate-600">Nr pojemnika</span>
+              <span className="font-bold text-slate-800">{selectedBin + 1}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-amber-50 border border-amber-200 p-3">
+              <span className="text-sm text-amber-700">Waga (kg)</span>
+              <span className="font-bold text-amber-700">✏️ Wpisuje operator ręcznie</span>
+            </div>
           </div>
         </div>
       )}
 
       {/* Implementation guide */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-base font-bold text-slate-800 mb-4">🛠️ Jak wdrożyć kody QR (instrukcja krok po kroku)</h3>
+        <h3 className="text-base font-bold text-slate-800 mb-4">🛠️ Jak wdrożyć kody QR</h3>
         <div className="space-y-3">
           {[
             {
               step: '1',
-              title: 'Wygeneruj kody QR',
-              desc: 'Użyj darmowego generatora QR (np. qr-code-generator.com). Każdy kod powinien otwierać ten system z parametrem określającym pojemnik.',
-              code: `${currentUrl}?bin=awaria`,
+              title: 'Wybierz maszynę i pojemnik',
+              desc: 'Wybierz stanowisko/maszynę powyżej, a następnie kliknij na pojemnik. Pojawi się gotowy kod QR.',
             },
             {
               step: '2',
-              title: 'Wydrukuj i zalaminuj',
-              desc: 'Wydrukuj kody QR w formacie A5 lub A4. Zalaminuj plastikową folią – będą odporne na kurz i wilgoć w hali produkcyjnej.',
+              title: 'Pobierz i wydrukuj',
+              desc: 'Kliknij "Pobierz QR" – zapisze się jako obrazek PNG. Wydrukuj w formacie A5 lub A4, zalaminuj.',
             },
             {
               step: '3',
-              title: 'Przyklej do pojemników',
-              desc: 'Przyklej kod na boku pojemnika na wysokości wzroku. Upewnij się, że jest dobrze oświetlony – aparat telefonu musi go zobaczyć.',
+              title: 'Przyklej do pojemnika',
+              desc: 'Przyklej kod na boku pojemnika na wysokości wzroku. Upewnij się, że jest dobrze oświetlony.',
             },
             {
               step: '4',
-              title: 'Przetestuj z operatorami',
-              desc: 'Przed oficjalnym uruchomieniem przetestuj z 2-3 operatorami. Cały proces (ważenie → wyrzucenie → skan → wpisanie) powinien zająć max 30 sekund.',
+              title: 'Operator skanuje i wpisuje wagę',
+              desc: 'Po zeskanowaniu QR telefon otworzy formularz z wypełnionymi danymi. Operator wpisuje tylko wagę i zapisuje.',
             },
           ].map(item => (
             <div key={item.step} className="flex gap-4 rounded-xl bg-slate-50 p-4">
@@ -221,36 +274,9 @@ export default function QRTab() {
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-slate-800">{item.title}</p>
                 <p className="text-sm text-slate-500 mt-0.5">{item.desc}</p>
-                {item.code && (
-                  <code className="mt-2 block text-xs bg-slate-800 text-emerald-400 rounded-lg px-3 py-2 break-all">
-                    {item.code}
-                  </code>
-                )}
               </div>
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* Week report */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-base font-bold text-slate-800 mb-2">📧 Automatyczny raport tygodniowy</h3>
-        <p className="text-sm text-slate-500 mb-4">
-          Drugi element Fazy 2 – kierownik produkcji dostaje email z podsumowaniem co tydzień. Konfiguracja jednorazowa.
-        </p>
-        <div className="rounded-xl bg-slate-50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Przykładowa treść emaila</p>
-          <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm font-mono text-slate-600 space-y-1">
-            <p className="font-bold text-slate-800">📊 Raport odpadów – tydzień 23/2025</p>
-            <p className="text-slate-400">───────────────────────────</p>
-            <p>Łącznie: <strong>245.3 kg</strong> w 47 zgłoszeniach</p>
-            <p>🟥 Awarie: 89.1 kg (36%)</p>
-            <p>🟨 Błędy op.: 67.4 kg (27%)</p>
-            <p>⬜ Procesowy: 88.8 kg (36%)</p>
-            <p className="text-slate-400">───────────────────────────</p>
-            <p>⚠️ Top problem: M07 – 71.2 kg (29% całości)</p>
-            <p className="text-slate-400 text-xs">Raport wygenerowany automatycznie przez WasteTrack</p>
-          </div>
         </div>
       </div>
     </div>
