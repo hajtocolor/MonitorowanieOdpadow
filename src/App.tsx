@@ -9,7 +9,7 @@ import QRTab from './components/QRTab';
 import RulesTab from './components/RulesTab';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { getStoredRole, setStoredRole, clearStoredRole, validateCredentials } from './auth';
+import { getStoredRole, login as apiLogin, logout as apiLogout } from './auth';
 import type { UserRole } from './types';
 
 type Tab = 'register' | 'dashboard' | 'reason' | 'machine' | 'history' | 'qr' | 'rules';
@@ -49,25 +49,23 @@ export default function App() {
       ? TABS.filter(tab => tab.id === 'register')
       : [];
 
-  const login = (selectedRole: UserRole) => {
-    setStoredRole(selectedRole);
-    setRole(selectedRole);
+  const handleLoginSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoginError('');
+
+    const result = await apiLogin(loginRole, password);
+    if (!result.success) {
+      setLoginError(result.error || 'Nieprawidłowy login lub hasło.');
+      return;
+    }
+
+    setPassword('');
+    setRole(loginRole);
     setActiveTab('register');
   };
 
-  const handleLoginSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!validateCredentials(loginRole, password)) {
-      setLoginError('Nieprawidłowy login lub hasło.');
-      return;
-    }
-    setLoginError('');
-    setPassword('');
-    login(loginRole);
-  };
-
   const logout = () => {
-    clearStoredRole();
+    apiLogout();
     setRole(null);
   };
 

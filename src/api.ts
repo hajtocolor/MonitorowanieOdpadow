@@ -1,11 +1,11 @@
 import { WasteEntry } from './types';
-import { getRoleHeader } from './auth';
+import { getAuthHeaders } from './auth';
 
 const API_PREFIX = import.meta.env.VITE_API_URL || '/api';
 
 function buildHeaders(json = true) {
   const headers: Record<string, string> = {
-    ...getRoleHeader(),
+    ...getAuthHeaders(),
   };
   if (json) {
     headers['Content-Type'] = 'application/json';
