@@ -17,6 +17,8 @@ type WasteEntryRow = {
   date: string;
   time: string;
   machineId: string;
+  classificationNumber: string;
+  binNumber: string;
   reason: string;
   weightKg: number;
   comment: string | null;
@@ -47,7 +49,7 @@ async function main() {
   console.log(`Łączenie z Supabase: ${SUPABASE_URL}`);
 
   const rows = sqlite
-    .prepare('SELECT id, date, time, machineId, reason, weightKg, comment, createdAt FROM entries')
+    .prepare('SELECT id, date, time, machineId, classificationNumber, binNumber, reason, weightKg, comment, createdAt FROM entries')
     .all() as WasteEntryRow[];
 
   if (!rows.length) {

@@ -5,6 +5,8 @@ export interface WasteEntry {
   date: string;       // ISO date string YYYY-MM-DD
   time: string;       // HH:MM
   machineId: string;
+  classificationNumber: string;
+  binNumber: string;
   reason: WasteReason;
   weightKg: number;
   comment?: string;

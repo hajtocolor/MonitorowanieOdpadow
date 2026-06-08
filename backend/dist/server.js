@@ -6,8 +6,9 @@ import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, '..', '.env.local') });
-dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+const repoRoot = path.resolve(__dirname, '..', '..');
+dotenv.config({ path: path.resolve(repoRoot, '.env.local') });
+dotenv.config({ path: path.resolve(repoRoot, '.env') });
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
@@ -41,13 +42,17 @@ function validateCredentials(role, password) {
     return (role === 'admin' || role === 'worker') && CREDENTIALS[role] === password;
 }
 function validateEntry(body) {
-    const { id, date, time, machineId, reason, weightKg, comment, createdAt } = body;
+    const { id, date, time, machineId, classificationNumber, binNumber, reason, weightKg, comment, createdAt } = body;
     if (typeof date !== 'string' || !date)
         return 'Nieprawidłowa data';
     if (typeof time !== 'string' || !time)
         return 'Nieprawidłowa godzina';
     if (typeof machineId !== 'string' || !machineId)
         return 'Nieprawidłowy numer maszyny';
+    if (typeof classificationNumber !== 'string' || !classificationNumber.trim())
+        return 'Nieprawidłowy numer klasyfikacji odpadu';
+    if (typeof binNumber !== 'string' || !binNumber.trim())
+        return 'Nieprawidłowy numer pojemnika';
     if (typeof reason !== 'string' || !['awaria', 'blad_operatora', 'procesowy'].includes(reason))
         return 'Nieprawidłowa przyczyna';
     if (typeof weightKg !== 'number' || Number.isNaN(weightKg) || weightKg <= 0)
@@ -88,6 +93,8 @@ app.post('/api/entries', async (req, res) => {
         date: req.body.date,
         time: req.body.time,
         machineId: req.body.machineId,
+        classificationNumber: req.body.classificationNumber,
+        binNumber: req.body.binNumber,
         reason: req.body.reason,
         weightKg: req.body.weightKg,
         comment: req.body.comment ?? null,
