@@ -11,6 +11,26 @@ function getNow() {
   };
 }
 
+function readQrParams() {
+  const params = new URLSearchParams(window.location.search);
+  const machine = params.get('machine') || '';
+  const reason = params.get('reason') as WasteReason | null;
+  const classificationNumber = params.get('classificationNumber') || '';
+  const binNumber = params.get('binNumber') || '';
+
+  // Clear URL params after reading them (so refresh doesn't re-prefill)
+  if (params.has('machine') || params.has('reason')) {
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+
+  return {
+    machine,
+    reason: reason && ['awaria', 'blad_operatora', 'procesowy'].includes(reason) ? reason : null,
+    classificationNumber,
+    binNumber,
+  };
+}
+
 interface Props {
   addEntry: ReturnType<typeof useWasteStore>['addEntry'];
   entries: WasteEntry[];
@@ -19,10 +39,11 @@ interface Props {
 }
 
 export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete }: Props) {
-  const [machine, setMachine] = useState('');
-  const [classificationNumber, setClassificationNumber] = useState('');
-  const [binNumber, setBinNumber] = useState('');
-  const [reason, setReason] = useState<WasteReason>('procesowy');
+  const qrParams = useRef(readQrParams());
+  const [machine, setMachine] = useState(qrParams.current.machine);
+  const [classificationNumber, setClassificationNumber] = useState(qrParams.current.classificationNumber);
+  const [binNumber, setBinNumber] = useState(qrParams.current.binNumber);
+  const [reason, setReason] = useState<WasteReason>(qrParams.current.reason || 'procesowy');
   const [weight, setWeight] = useState('');
   const [comment, setComment] = useState('');
   const [success, setSuccess] = useState(false);
@@ -30,6 +51,15 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
   const [now, setNow] = useState(getNow());
   const weightRef = useRef<HTMLInputElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isQrMode = !!qrParams.current.machine;
+
+  // Auto-focus weight field when coming from QR scan
+  useEffect(() => {
+    if (isQrMode) {
+      weightRef.current?.focus();
+    }
+  }, [isQrMode]);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(getNow()), 15000);
