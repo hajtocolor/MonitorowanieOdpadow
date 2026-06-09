@@ -52,6 +52,13 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
   const weightRef = useRef<HTMLInputElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Full bin report state
+  const [fullBinReason, setFullBinReason] = useState<WasteReason>('procesowy');
+  const [binReportLoading, setBinReportLoading] = useState(false);
+  const [binReportSuccess, setBinReportSuccess] = useState(false);
+  const [binReportError, setBinReportError] = useState('');
+  const binReportTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const isQrMode = !!qrParams.current.machine;
 
   // Auto-focus weight field when coming from QR scan
@@ -96,6 +103,35 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => setSuccess(false), 3000);
     weightRef.current?.focus();
+  };
+
+  const handleReportFullBin = async () => {
+    if (!machine) {
+      setBinReportError('Najpierw wybierz maszynę w formularzu powyżej.');
+      return;
+    }
+    setBinReportLoading(true);
+    setBinReportError('');
+    setBinReportSuccess(false);
+
+    try {
+      const { createBinRequest } = await import('../api');
+      await createBinRequest({
+        binNumber: binNumber || '(nie podano)',
+        reason: fullBinReason,
+        requestedBy: machine,
+      });
+      setBinReportSuccess(true);
+      if (binReportTimer.current) clearTimeout(binReportTimer.current);
+      binReportTimer.current = setTimeout(() => setBinReportSuccess(false), 6000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Błąd wysyłania zgłoszenia';
+      setBinReportError(message);
+      if (binReportTimer.current) clearTimeout(binReportTimer.current);
+      binReportTimer.current = setTimeout(() => setBinReportError(''), 6000);
+    } finally {
+      setBinReportLoading(false);
+    }
   };
 
   const todayEntries = entries.filter(e => e.date === getNow().date);
@@ -288,6 +324,46 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
             </p>
           </div>
         </div>
+      </div>
+
+      {/* FULL BIN REPORT BUTTON */}
+      <div className="rounded-2xl border border-orange-200 bg-orange-50 p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex-1">
+            <h3 className="text-sm font-bold text-orange-800">🗑️ Pojemnik pełny?</h3>
+            <p className="text-xs text-orange-600 mt-1">
+              Jeśli pojemnik jest już pełny — zgłoś to. Magazynier dostanie powiadomienie na Slack.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              value={fullBinReason}
+              onChange={e => setFullBinReason(e.target.value as WasteReason)}
+              className="rounded-xl border-2 border-orange-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:border-orange-400 focus:outline-none"
+            >
+              <option value="procesowy">⬜ Procesowy</option>
+              <option value="awaria">🔴 Awaria</option>
+              <option value="blad_operatora">🟡 Błąd operatora</option>
+            </select>
+            <button
+              onClick={handleReportFullBin}
+              disabled={binReportLoading}
+              className="flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-200 transition hover:bg-orange-600 active:scale-95 disabled:opacity-50"
+            >
+              {binReportLoading ? '⏳...' : '🚨 Zgłoś pełny pojemnik'}
+            </button>
+          </div>
+        </div>
+        {binReportSuccess && (
+          <div className="mt-3 rounded-xl bg-emerald-100 px-4 py-2 text-xs font-semibold text-emerald-700 border border-emerald-200">
+            ✅ Zgłoszenie wysłane! Magazynier został powiadomiony.
+          </div>
+        )}
+        {binReportError && (
+          <div className="mt-3 rounded-xl bg-red-100 px-4 py-2 text-xs font-semibold text-red-700 border border-red-200">
+            ⚠️ {binReportError}
+          </div>
+        )}
       </div>
 
       {/* TODAY'S ENTRIES */}

@@ -218,6 +218,126 @@ app.delete('/api/entries', authenticateToken, requireRole(['admin']), async (req
   res.status(204).send();
 });
 
+// === BIN REQUESTS ===
+
+const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
+
+async function sendSlackNotification(binNumber: string, reason: string, machineId: string) {
+  if (!SLACK_WEBHOOK_URL) {
+    console.log('SLACK_WEBHOOK_URL nie ustawione — pomijam powiadomienie');
+    return;
+  }
+
+  const reasonLabel =
+    reason === 'awaria' ? ':red_circle: Awaria maszyny'
+    : reason === 'blad_operatora' ? ':yellow_circle: Błąd operatora'
+    : ':white_circle: Procesowy';
+
+  const timeStr = new Date().toLocaleString('pl-PL');
+
+  const message = {
+    text: `🚨 Zgłoszenie pełnego pojemnika\n*Pojemnik:* ${binNumber}\n*Rodzaj:* ${reasonLabel}\n*Zgłoszony z maszyny:* ${machineId}\n*Czas:* ${timeStr}\n\nProszę o wymianę na pusty pojemnik.`,
+    mrkdwn: true,
+  };
+
+  try {
+    const response = await fetch(SLACK_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message),
+    });
+
+    if (!response.ok) {
+      console.error('Błąd wysyłania do Slack:', response.status, await response.text().catch(() => ''));
+    } else {
+      console.log('Powiadomienie Slack wysłane dla pojemnika', binNumber);
+    }
+  } catch (err) {
+    console.error('Błąd połączenia z Slack webhook:', err);
+  }
+}
+
+// POST /api/bin-requests — zgłoś pełny pojemnik
+app.post('/api/bin-requests', authenticateToken, async (req, res) => {
+  const { binNumber, reason, requestedBy } = req.body;
+
+  if (!binNumber || typeof binNumber !== 'string' || !binNumber.trim()) {
+    return res.status(400).json({ error: 'Nieprawidłowy numer pojemnika' });
+  }
+  if (!reason || !['awaria', 'blad_operatora', 'procesowy'].includes(reason)) {
+    return res.status(400).json({ error: 'Nieprawidłowa przyczyna' });
+  }
+  if (!requestedBy || typeof requestedBy !== 'string' || !requestedBy.trim()) {
+    return res.status(400).json({ error: 'Nieprawidłowa maszyna zgłaszająca' });
+  }
+
+  const id = `binreq-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const now = new Date().toISOString();
+
+  const { data, error } = await supabase.from('bin_requests').insert([{
+    id,
+    bin_number: binNumber.trim(),
+    reason,
+    requested_by: requestedBy.trim(),
+    requested_at: now,
+    resolved_at: null,
+    resolved_by: null,
+  }]).select();
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  // Wyślij powiadomienie do Slack (asynchronicznie — nie blokuje odpowiedzi)
+  sendSlackNotification(binNumber.trim(), reason, requestedBy.trim());
+
+  res.status(201).json(data?.[0] ?? {
+    id,
+    binNumber: binNumber.trim(),
+    reason,
+    requestedBy: requestedBy.trim(),
+    requestedAt: now,
+    resolvedAt: null,
+    resolvedBy: null,
+  });
+});
+
+// GET /api/bin-requests — lista zgłoszeń
+app.get('/api/bin-requests', authenticateToken, requireRole(['admin']), async (_req, res) => {
+  const { data, error } = await supabase
+    .from('bin_requests')
+    .select('*')
+    .order('requested_at', { ascending: false });
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  res.json(data ?? []);
+});
+
+// PATCH /api/bin-requests/:id/resolve — oznacz jako zrealizowane
+app.patch('/api/bin-requests/:id/resolve', authenticateToken, requireRole(['admin']), async (req, res) => {
+  const now = new Date().toISOString();
+  const userRole = (req as any).user?.role || 'unknown';
+
+  const { data, error } = await supabase
+    .from('bin_requests')
+    .update({ resolved_at: now, resolved_by: userRole })
+    .eq('id', req.params.id)
+    .select();
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  if (!data || data.length === 0) {
+    return res.status(404).json({ error: 'Nie znaleziono zgłoszenia' });
+  }
+
+  res.json(data[0]);
+});
+
 const port = process.env.PORT ? Number(process.env.PORT) : 4000;
 app.listen(port, () => {
   console.log(`Backend uruchomiony na porcie ${port}`);
