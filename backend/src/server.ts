@@ -48,6 +48,9 @@ const corsOrigins = process.env.CORS_ORIGIN
 if (!corsOrigins) {
   console.warn('OSTRZEŻENIE: CORS_ORIGIN nie jest ustawione. Backend będzie dostępny dla wszystkich originów (tylko do dewelopmentu!)');
 }
+// Trust proxy - Railway/proxy dodaje X-Forwarded-For, musimy to uwzględnić
+// żeby express-rate-limit poprawnie identyfikował userów
+app.set('trust proxy', 1);
 app.use(cors({
   origin: corsOrigins || '*',
   credentials: true,
