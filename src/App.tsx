@@ -7,12 +7,13 @@ import MachineAnalysisTab from './components/MachineAnalysisTab';
 import HistoryTab from './components/HistoryTab';
 import QRTab from './components/QRTab';
 import RulesTab from './components/RulesTab';
+import DictionaryTab from './components/DictionaryTab';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { getStoredRole, login as apiLogin, logout as apiLogout } from './auth';
 import type { UserRole } from './types';
 
-type Tab = 'register' | 'dashboard' | 'reason' | 'machine' | 'history' | 'qr' | 'rules';
+type Tab = 'register' | 'dashboard' | 'reason' | 'machine' | 'history' | 'qr' | 'rules' | 'dictionary';
 
 const TABS: Array<{ id: Tab; label: string; icon: string; desc: string }> = [
   { id: 'register', label: 'Rejestr', icon: '📝', desc: 'Wpisz odpad' },
@@ -22,6 +23,7 @@ const TABS: Array<{ id: Tab; label: string; icon: string; desc: string }> = [
   { id: 'history', label: 'Historia', icon: '📋', desc: 'Wszystkie wpisy' },
   { id: 'qr', label: 'QR Faza 2', icon: '🚀', desc: 'Kody QR' },
   { id: 'rules', label: 'Zasady', icon: '📜', desc: 'Instrukcja' },
+  { id: 'dictionary', label: 'Słownik', icon: '📖', desc: 'Klasyfikacja odpadów' },
 ];
 
 export default function App() {
@@ -250,6 +252,9 @@ export default function App() {
             )}
             {activeTab === 'rules' && (
               <RulesTab />
+            )}
+            {activeTab === 'dictionary' && (
+              <DictionaryTab />
             )}
           </>
         )}
