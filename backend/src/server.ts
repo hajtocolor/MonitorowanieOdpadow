@@ -236,6 +236,7 @@ app.delete('/api/entries', authenticateToken, requireRole(['admin']), async (req
 // === BIN REQUESTS ===
 
 const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
+const NTFY_TOPIC = process.env.NTFY_TOPIC;
 
 async function sendSlackNotification(binNumber: string, reason: string, machineId: string) {
   if (!SLACK_WEBHOOK_URL) {
@@ -244,15 +245,43 @@ async function sendSlackNotification(binNumber: string, reason: string, machineI
   }
 
   const reasonLabel =
-    reason === 'awaria' ? ':red_circle: Awaria maszyny'
-    : reason === 'blad_operatora' ? ':yellow_circle: Błąd operatora'
-    : ':white_circle: Procesowy';
+    reason === 'awaria' ? ':rotating_light: AWARIA MASZYNY'
+    : reason === 'blad_operatora' ? ':warning: BŁĄD OPERATORA'
+    : ':bell: PROCESOWY';
 
   const timeStr = new Date().toLocaleString('pl-PL');
 
+  // Używamy Blocks + mention <!channel> — Slack emituje dźwięk powiadomienia
   const message = {
-    text: `🚨 Zgłoszenie pełnego pojemnika\n*Pojemnik:* ${binNumber}\n*Rodzaj:* ${reasonLabel}\n*Zgłoszony z maszyny:* ${machineId}\n*Czas:* ${timeStr}\n\nProszę o wymianę na pusty pojemnik.`,
-    mrkdwn: true,
+    text: `<!channel> :rotating_light: NOWE ZGŁOSZENIE PEŁNEGO POJEMNIKA :rotating_light:`,
+    blocks: [
+      {
+        type: 'header',
+        text: {
+          type: 'plain_text',
+          text: ':rotating_light:  ZGŁOSZENIE PEŁNEGO POJEMNIKA',
+          emoji: true,
+        },
+      },
+      {
+        type: 'section',
+        fields: [
+          { type: 'mrkdwn', text: `*Pojemnik:*\n${binNumber}` },
+          { type: 'mrkdwn', text: `*Rodzaj:*\n${reasonLabel}` },
+          { type: 'mrkdwn', text: `*Zgłoszony z maszyny:*\n${machineId}` },
+          { type: 'mrkdwn', text: `*Czas:*\n${timeStr}` },
+        ],
+      },
+      {
+        type: 'context',
+        elements: [
+          {
+            type: 'mrkdwn',
+            text: `Proszę o wymianę na pusty pojemnik. <!channel>`,
+          },
+        ],
+      },
+    ],
   };
 
   try {
@@ -269,6 +298,40 @@ async function sendSlackNotification(binNumber: string, reason: string, machineI
     }
   } catch (err) {
     console.error('Błąd połączenia z Slack webhook:', err);
+  }
+}
+
+// ntfy.sh — wysyła powiadomienie z głośnym dźwiękiem na telefon
+// (działa bez konta, wystarczy wybrać topic i zasubskrybować go w aplikacji ntfy)
+async function sendNtfyNotification(binNumber: string, reason: string, machineId: string) {
+  if (!NTFY_TOPIC) return;
+
+  const reasonLabel =
+    reason === 'awaria' ? 'AWARIA MASZYNY'
+    : reason === 'blad_operatora' ? 'BŁĄD OPERATORA'
+    : 'PROCESOWY';
+
+  const priority = reason === 'awaria' ? '5' : '4'; // 5 = max, 4 = high
+  const title = `🚨 Pojemnik ${binNumber}`;
+  const message = `${reasonLabel} • Maszyna: ${machineId} • ${new Date().toLocaleString('pl-PL')}`;
+
+  try {
+    const response = await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
+      method: 'POST',
+      headers: {
+        'Title': title,
+        'Priority': priority,
+        'Tags': 'warning,bell,trash',
+      },
+      body: message,
+    });
+    if (!response.ok) {
+      console.error('Błąd wysyłania do ntfy.sh:', response.status);
+    } else {
+      console.log('Powiadomienie ntfy.sh wysłane dla pojemnika', binNumber);
+    }
+  } catch (err) {
+    console.error('Błąd połączenia z ntfy.sh:', err);
   }
 }
 
@@ -303,8 +366,9 @@ app.post('/api/bin-requests', authenticateToken, async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 
-  // Wyślij powiadomienie do Slack (asynchronicznie — nie blokuje odpowiedzi)
+  // Wyślij powiadomienia (asynchronicznie — nie blokuje odpowiedzi)
   sendSlackNotification(binNumber.trim(), reason, requestedBy.trim());
+  sendNtfyNotification(binNumber.trim(), reason, requestedBy.trim());
 
   res.status(201).json(data?.[0] ?? {
     id,
