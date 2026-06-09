@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import jwt from 'jsonwebtoken';
+import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -12,7 +14,6 @@ const repoRoot = path.resolve(__dirname, '..', '..');
 
 dotenv.config({ path: path.resolve(repoRoot, '.env.local') });
 dotenv.config({ path: path.resolve(repoRoot, '.env') });
-
 // === CONFIG FROM ENV ===
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -33,11 +34,33 @@ if (!ADMIN_PASSWORD || !WORKER_PASSWORD) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const app = express();
+
+// Security headers (helmet)
+app.use(helmet({
+  contentSecurityPolicy: false, // disabled for SPA to work
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
+
+// Strict CORS - only allow specific origins in production
+const corsOrigin = process.env.CORS_ORIGIN;
+if (!corsOrigin) {
+  console.warn('OSTRZEŻENIE: CORS_ORIGIN nie jest ustawione. Backend będzie dostępny dla wszystkich originów (tylko do dewelopmentu!)');
+}
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: corsOrigin || '*',
   credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
+
+// Rate limiting - protect against abuse
+const limiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuta
+  max: 100, // max 100 requestów na minutę
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Zbyt wiele zapytań. Spróbuj ponownie za minutę.' },
+});
+app.use(limiter);
 
 // === JWT MIDDLEWARE ===
 interface JwtPayload {
@@ -182,7 +205,12 @@ app.delete('/api/entries/:id', authenticateToken, requireRole(['admin']), async 
   res.status(204).send();
 });
 
-app.delete('/api/entries', authenticateToken, requireRole(['admin']), async (_req, res) => {
+app.delete('/api/entries', authenticateToken, requireRole(['admin']), async (req, res) => {
+  // Require confirmation to prevent accidental deletion
+  if (req.query.confirm !== 'true') {
+    return res.status(400).json({ error: 'Wymagane potwierdzenie: dodaj ?confirm=true do zapytania' });
+  }
+
   const { error } = await supabase.from('entries').delete().neq('id', '');
   if (error) {
     return res.status(500).json({ error: error.message });

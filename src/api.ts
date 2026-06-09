@@ -48,7 +48,7 @@ export function deleteEntryApi(id: string) {
 }
 
 export function clearEntriesApi() {
-  return fetch(`${API_PREFIX}/entries`, {
+  return fetch(`${API_PREFIX}/entries?confirm=true`, {
     method: 'DELETE',
     headers: buildHeaders(false),
   }).then(response => {
