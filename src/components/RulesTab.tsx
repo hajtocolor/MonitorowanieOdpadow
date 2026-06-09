@@ -128,25 +128,6 @@ export default function RulesTab() {
         </div>
       </div>
 
-      {/* Pitfalls */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-base font-bold text-slate-800 mb-4">🚫 Pułapki których należy bezwzględnie unikać</h3>
-        <div className="space-y-3">
-          {[
-            'Nigdy nie dodawaj kolejnych pól do formularza. Każde dodatkowe pole zmniejsza wypełnialność o 50%.',
-            'Nie kupuj za 50 000 zł specjalnego systemu ERP do śledzenia odpadów. To rozwiązanie daje 98% funkcjonalności za 0 zł.',
-            'Nie wymagaj dokładności do 10 gramów. Tolerancja ±10% jest wystarczająca.',
-            'Nigdy nikomu nie mów "widzę że wpisałeś 12 kg a tam było 14 kg".',
-            'Nie rób z tego narzędzia do oceniania pracowników na rozmowie rocznej.',
-          ].map((trap, i) => (
-            <div key={i} className="flex gap-3 rounded-xl bg-red-50 border border-red-100 px-4 py-3">
-              <span className="text-red-500 shrink-0 font-bold">✕</span>
-              <p className="text-sm text-red-700">{trap}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Dashboard tabs guide */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="text-base font-bold text-slate-800 mb-4">📊 Zakładki systemu</h3>
