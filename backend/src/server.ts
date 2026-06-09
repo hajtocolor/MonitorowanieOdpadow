@@ -96,6 +96,15 @@ function requireRole(allowed: Array<'admin' | 'worker'>) {
 
 // === PUBLIC ENDPOINTS ===
 
+app.get('/', (_req, res) => {
+  res.json({
+    ok: true,
+    service: 'Factory Waste Tracking API',
+    health: '/api/health',
+    test: '/api/test',
+  });
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
 });
