@@ -42,12 +42,14 @@ app.use(helmet({
 }));
 
 // Strict CORS - only allow specific origins in production
-const corsOrigin = process.env.CORS_ORIGIN;
-if (!corsOrigin) {
+const corsOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
+  : undefined;
+if (!corsOrigins) {
   console.warn('OSTRZEŻENIE: CORS_ORIGIN nie jest ustawione. Backend będzie dostępny dla wszystkich originów (tylko do dewelopmentu!)');
 }
 app.use(cors({
-  origin: corsOrigin || '*',
+  origin: corsOrigins || '*',
   credentials: true,
 }));
 app.use(express.json({ limit: '1mb' }));
