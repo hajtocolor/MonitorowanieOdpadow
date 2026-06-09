@@ -13,6 +13,16 @@ export interface WasteEntry {
   createdAt: string;  // full ISO timestamp
 }
 
+export interface BinRequest {
+  id: string;
+  binNumber: string;
+  reason: WasteReason;
+  requestedBy: string;
+  requestedAt: string;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+}
+
 export interface Machine {
   id: string;
   label: string;

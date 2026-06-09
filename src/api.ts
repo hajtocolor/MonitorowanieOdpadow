@@ -57,3 +57,38 @@ export function clearEntriesApi() {
     }
   });
 }
+
+// === BIN REQUESTS ===
+
+export interface BinRequestPayload {
+  binNumber: string;
+  reason: string;
+  requestedBy: string;
+}
+
+export function createBinRequest(payload: BinRequestPayload) {
+  return fetch(`${API_PREFIX}/bin-requests`, {
+    method: 'POST',
+    headers: buildHeaders(true),
+    body: JSON.stringify(payload),
+  }).then(handleJsonResponse);
+}
+
+export function getBinRequests() {
+  return fetch(`${API_PREFIX}/bin-requests`, {
+    headers: buildHeaders(false),
+  }).then(handleJsonResponse);
+}
+
+export function resolveBinRequest(id: string) {
+  return fetch(`${API_PREFIX}/bin-requests/${encodeURIComponent(id)}/resolve`, {
+    method: 'PATCH',
+    headers: buildHeaders(false),
+  }).then(async response => {
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new Error(payload?.error || 'Nie udało się oznaczyć zgłoszenia jako zrealizowane');
+    }
+    return response.json();
+  });
+}
