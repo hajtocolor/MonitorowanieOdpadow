@@ -21,16 +21,17 @@ export interface Machine {
 export type UserRole = 'admin' | 'worker';
 
 export const MACHINES: Machine[] = [
-  { id: 'M01', label: 'M01 – Prasa hydrauliczna' },
-  { id: 'M02', label: 'M02 – Wtryskarka #1' },
-  { id: 'M03', label: 'M03 – Wtryskarka #2' },
-  { id: 'M04', label: 'M04 – Linia spawalnicza' },
-  { id: 'M05', label: 'M05 – CNC frezarka' },
-  { id: 'M06', label: 'M06 – Tokarka automatyczna' },
-  { id: 'M07', label: 'M07 – Linia pakowania' },
-  { id: 'M08', label: 'M08 – Agregat chłodniczy' },
-  { id: 'M09', label: 'M09 – Robot spawalniczy' },
-  { id: 'M10', label: 'M10 – Taśma transportowa' },
+  { id: 'M01', label: 'HD 1 (HP100K)' },
+  { id: 'M02', label: 'HD 2 (HP100K)' },
+  { id: 'M03', label: 'HD 3 (HP100K)' },
+  { id: 'M04', label: 'HD 4 (HP100K)' },
+  { id: 'M05', label: 'HM 1' },
+  { id: 'M06', label: 'HM 2' },
+  { id: 'M07', label: 'NORITSU' },
+  { id: 'M08', label: 'VSP' },
+  { id: 'M09', label: 'MASTER CUT 1' },
+  { id: 'M10', label: 'MASTER CUT 2' },
+  { id: 'M11', label: 'MASTER CUT 3' },
 ];
 
 export const REASONS: Record<WasteReason, { label: string; color: string; bg: string; border: string; emoji: string; binColor: string }> = {
