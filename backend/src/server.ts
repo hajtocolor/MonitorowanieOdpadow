@@ -100,6 +100,10 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
 });
 
+app.get('/api/test', (_req, res) => {
+  res.json({ ok: true, endpoints: ['entries', 'bin-requests', 'health', 'login'] });
+});
+
 app.post('/api/login', (req, res) => {
   const { role, password } = req.body;
 

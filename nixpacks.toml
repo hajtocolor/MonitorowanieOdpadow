@@ -5,7 +5,10 @@ nixPkgs = ["nodejs_22"]
 cmds = ["cd backend && npm install"]
 
 [phases.build]
-cmds = ["cd backend && npm run build"]
+cmds = ["cd backend && npx tsc -p backend/tsconfig.json"]
+
+[cache]
+disabled = true
 
 [start]
 cmd = "cd backend && node dist/server.js"
