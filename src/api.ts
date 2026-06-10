@@ -66,18 +66,31 @@ export interface BinRequestPayload {
   requestedBy: string;
 }
 
+// Supabase zwraca snake_case, frontend oczekuje camelCase — mapujemy
+function mapBinRequest(raw: any): any {
+  return {
+    id: raw.id,
+    binNumber: raw.bin_number ?? raw.binNumber,
+    reason: raw.reason,
+    requestedBy: raw.requested_by ?? raw.requestedBy,
+    requestedAt: raw.requested_at ?? raw.requestedAt,
+    resolvedAt: raw.resolved_at ?? raw.resolvedAt ?? null,
+    resolvedBy: raw.resolved_by ?? raw.resolvedBy ?? null,
+  };
+}
+
 export function createBinRequest(payload: BinRequestPayload) {
   return fetch(`${API_PREFIX}/bin-requests`, {
     method: 'POST',
     headers: buildHeaders(true),
     body: JSON.stringify(payload),
-  }).then(handleJsonResponse);
+  }).then(handleJsonResponse).then(mapBinRequest);
 }
 
 export function getBinRequests() {
   return fetch(`${API_PREFIX}/bin-requests`, {
     headers: buildHeaders(false),
-  }).then(handleJsonResponse);
+  }).then(handleJsonResponse).then((data: any[]) => (data ?? []).map(mapBinRequest));
 }
 
 export function resolveBinRequest(id: string) {
@@ -89,6 +102,6 @@ export function resolveBinRequest(id: string) {
       const payload = await response.json().catch(() => null);
       throw new Error(payload?.error || 'Nie udało się oznaczyć zgłoszenia jako zrealizowane');
     }
-    return response.json();
+    return response.json().then(mapBinRequest);
   });
 }
