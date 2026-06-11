@@ -338,6 +338,31 @@ async function sendNtfyNotification(binNumber: string, reason: string, machineId
   }
 }
 
+// === BINS (autocomplete) ===
+
+// GET /api/bins — pobierz wszystkie pojemniki (do autouzupełniania)
+app.get('/api/bins', authenticateToken, async (_req, res) => {
+  const { data, error } = await supabase
+    .from('bins')
+    .select('*')
+    .order('bin_number', { ascending: true });
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  // Mapowanie snake_case → camelCase
+  const mapped = (data ?? []).map((b: any) => ({
+    id: b.id,
+    binNumber: b.bin_number,
+    classificationCode: b.classification_code,
+    description: b.description,
+    machineIds: b.machine_ids,
+  }));
+
+  res.json(mapped);
+});
+
 // POST /api/bin-requests — zgłoś pełny pojemnik
 app.post('/api/bin-requests', authenticateToken, async (req, res) => {
   const { binNumber, reason, requestedBy } = req.body;

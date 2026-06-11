@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { WasteEntry, WasteReason, MACHINES, REASONS } from '../types';
+import { WasteEntry, WasteReason, MACHINES, REASONS, Bin } from '../types';
 import { useWasteStore } from '../store';
+import { getBins } from '../api';
 import { format } from 'date-fns';
 
 function getNow() {
@@ -51,6 +52,31 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
   const [now, setNow] = useState(getNow());
   const weightRef = useRef<HTMLInputElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Bins autocomplete
+  const [bins, setBins] = useState<Bin[]>([]);
+  const [binsLoading, setBinsLoading] = useState(true);
+
+  useEffect(() => {
+    getBins()
+      .then(data => {
+        setBins(data ?? []);
+        setBinsLoading(false);
+      })
+      .catch(() => setBinsLoading(false));
+  }, []);
+
+  // Auto-fill classification & filter machines when bin number changes
+  const handleBinNumberChange = (value: string) => {
+    setBinNumber(value);
+    const match = bins.find(b => b.binNumber === value.trim());
+    if (match) {
+      setClassificationNumber(match.classificationCode);
+      if (match.machineIds && match.machineIds.length > 0) {
+        setMachine(match.machineIds[0]);
+      }
+    }
+  };
 
   // Full bin report state
   const [fullBinReason, setFullBinReason] = useState<WasteReason>('procesowy');
@@ -135,6 +161,7 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
   };
 
   const todayEntries = entries.filter(e => e.date === getNow().date);
+  const currentBinMatch = binNumber ? bins.find(b => b.binNumber === binNumber.trim()) : null;
 
   return (
     <div className="space-y-6">
@@ -204,13 +231,33 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
                   <label className="mb-1.5 block text-sm font-semibold text-slate-700">
                     Nr pojemnika <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    value={binNumber}
-                    onChange={e => setBinNumber(e.target.value)}
-                    placeholder="np. 3"
-                    className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700 transition focus:border-blue-500 focus:bg-white focus:outline-none"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={binNumber}
+                      onChange={e => handleBinNumberChange(e.target.value)}
+                      placeholder="np. 101"
+                      className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700 transition focus:border-blue-500 focus:bg-white focus:outline-none"
+                      list="bin-suggestions"
+                    />
+                    <datalist id="bin-suggestions">
+                      {bins.map(b => (
+                        <option key={b.id} value={b.binNumber}>
+                          {b.binNumber} — {b.classificationCode} — {b.description}
+                        </option>
+                      ))}
+                    </datalist>
+                    {currentBinMatch ? (
+                      <div className="mt-1 text-xs text-emerald-600">
+                        ✓ Rozpoznany: {currentBinMatch.classificationCode}
+                        {currentBinMatch.description && <> — {currentBinMatch.description}</>}
+                      </div>
+                    ) : binNumber && !binsLoading ? (
+                      <div className="mt-1 text-xs text-amber-600">
+                        ⚠️ Nieznany numer pojemnika — możesz wpisać ręcznie
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </div>
 
