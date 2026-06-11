@@ -1,4 +1,4 @@
-import { WasteEntry } from './types';
+import { WasteEntry, Bin } from './types';
 import { getAuthHeaders } from './auth';
 
 const API_PREFIX = import.meta.env.VITE_API_URL || '/api';
@@ -102,6 +102,14 @@ export function resolveBinRequest(id: string) {
       const payload = await response.json().catch(() => null);
       throw new Error(payload?.error || 'Nie udało się oznaczyć zgłoszenia jako zrealizowane');
     }
-    return response.json().then(mapBinRequest);
+  return response.json().then(mapBinRequest);
   });
+}
+
+// === BINS (autocomplete) ===
+
+export function getBins() {
+  return fetch(`${API_PREFIX}/bins`, {
+    headers: buildHeaders(false),
+  }).then(handleJsonResponse) as Promise<Bin[]>;
 }
