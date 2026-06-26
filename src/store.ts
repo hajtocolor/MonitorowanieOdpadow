@@ -45,6 +45,7 @@ export function useWasteStore() {
       })
       .catch(() => {
         setBackendAvailable(false);
+        setEntries(loadEntries());
       });
   }, []);
 
