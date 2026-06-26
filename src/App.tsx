@@ -9,12 +9,13 @@ import QRTab from './components/QRTab';
 import RulesTab from './components/RulesTab';
 import DictionaryTab from './components/DictionaryTab';
 import BinRequestsTab from './components/BinRequestsTab';
+import AdminPanel from './components/AdminPanel';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { getStoredRole, login as apiLogin, logout as apiLogout } from './auth';
 import type { UserRole } from './types';
 
-type Tab = 'register' | 'dashboard' | 'reason' | 'machine' | 'history' | 'qr' | 'rules' | 'dictionary' | 'binrequests';
+type Tab = 'register' | 'dashboard' | 'reason' | 'machine' | 'history' | 'qr' | 'rules' | 'dictionary' | 'binrequests' | 'admin';
 
 const TABS: Array<{ id: Tab; label: string; icon: string; desc: string }> = [
   { id: 'register', label: 'Rejestr', icon: '📝', desc: 'Wpisz odpad' },
@@ -26,6 +27,7 @@ const TABS: Array<{ id: Tab; label: string; icon: string; desc: string }> = [
   { id: 'rules', label: 'Zasady', icon: '📜', desc: 'Instrukcja' },
   { id: 'dictionary', label: 'Słownik', icon: '📖', desc: 'Klasyfikacja odpadów' },
   { id: 'binrequests', label: 'Zgłoszenia', icon: '🗑️', desc: 'Wymiana pojemników' },
+  { id: 'admin', label: 'Admin', icon: '🔧', desc: 'Zarządzanie' },
 ];
 
 export default function App() {
@@ -260,6 +262,9 @@ export default function App() {
             )}
             {activeTab === 'binrequests' && (
               <BinRequestsTab />
+            )}
+            {activeTab === 'admin' && (
+              <AdminPanel />
             )}
           </>
         )}

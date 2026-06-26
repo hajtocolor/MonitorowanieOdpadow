@@ -106,10 +106,52 @@ export function resolveBinRequest(id: string) {
   });
 }
 
-// === BINS (autocomplete) ===
+// === BINS (autocomplete + admin) ===
 
 export function getBins() {
   return fetch(`${API_PREFIX}/bins`, {
     headers: buildHeaders(false),
   }).then(handleJsonResponse) as Promise<Bin[]>;
+}
+
+export function createBin(data: { binNumber: string; classificationCode: string; description?: string; machineIds?: string[] }) {
+  return fetch(`${API_PREFIX}/bins`, {
+    method: 'POST',
+    headers: buildHeaders(true),
+    body: JSON.stringify(data),
+  }).then(handleJsonResponse);
+}
+
+export function deleteBin(id: string) {
+  return fetch(`${API_PREFIX}/bins/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: buildHeaders(false),
+  }).then(response => {
+    if (!response.ok) throw new Error('Nie udało się usunąć pojemnika');
+  });
+}
+
+// === MACHINES ===
+
+export function getMachines(): Promise<{ id: string; label: string }[]> {
+  return fetch(`${API_PREFIX}/machines`, {
+    headers: buildHeaders(false),
+  }).then(handleJsonResponse);
+}
+
+export function createMachine(data: { id: string; label: string }) {
+  return fetch(`${API_PREFIX}/machines`, {
+    method: 'POST',
+    headers: buildHeaders(true),
+    body: JSON.stringify(data),
+  }).then(handleJsonResponse);
+}
+
+export function deleteMachine(id: string) {
+  return fetch(`${API_PREFIX}/machines/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: buildHeaders(false),
+  }).then(response => {
+    if (!response.ok) throw new Error('Nie udało się usunąć maszyny');
+  });
 }

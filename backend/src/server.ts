@@ -363,6 +363,88 @@ app.get('/api/bins', authenticateToken, async (_req, res) => {
   res.json(mapped);
 });
 
+// POST /api/bins — dodaj nowy pojemnik (admin)
+app.post('/api/bins', authenticateToken, requireRole(['admin']), async (req, res) => {
+  const { binNumber, classificationCode, description, machineIds } = req.body;
+  if (!binNumber || typeof binNumber !== 'string' || !binNumber.trim()) {
+    return res.status(400).json({ error: 'Nieprawidłowy numer pojemnika' });
+  }
+  if (!classificationCode || typeof classificationCode !== 'string' || !classificationCode.trim()) {
+    return res.status(400).json({ error: 'Nieprawidłowy kod klasyfikacji' });
+  }
+
+  const id = `bin-${binNumber.trim()}`;
+  const { data, error } = await supabase.from('bins').insert([{
+    id,
+    bin_number: binNumber.trim(),
+    classification_code: classificationCode.trim(),
+    description: description?.trim() || '',
+    machine_ids: machineIds || null,
+  }]).select();
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+  res.status(201).json({
+    id: data?.[0]?.id || id,
+    binNumber: binNumber.trim(),
+    classificationCode: classificationCode.trim(),
+    description: description?.trim() || '',
+    machineIds: machineIds || null,
+  });
+});
+
+// DELETE /api/bins/:id — usuń pojemnik (admin)
+app.delete('/api/bins/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
+  const { error } = await supabase.from('bins').delete().eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(204).send();
+});
+
+// === MACHINES (admin) ===
+
+// GET /api/machines — lista maszyn (z bazy, nie z kodu)
+app.get('/api/machines', authenticateToken, async (_req, res) => {
+  const { data, error } = await supabase
+    .from('machines')
+    .select('*')
+    .order('label', { ascending: true });
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  const mapped = (data ?? []).map((m: any) => ({
+    id: m.id,
+    label: m.label,
+  }));
+  res.json(mapped);
+});
+
+// POST /api/machines — dodaj maszynę (admin)
+app.post('/api/machines', authenticateToken, requireRole(['admin']), async (req, res) => {
+  const { id, label } = req.body;
+  if (!id || typeof id !== 'string' || !id.trim()) {
+    return res.status(400).json({ error: 'Nieprawidłowy identyfikator maszyny' });
+  }
+  if (!label || typeof label !== 'string' || !label.trim()) {
+    return res.status(400).json({ error: 'Nieprawidłowa nazwa maszyny' });
+  }
+
+  const { data, error } = await supabase.from('machines').insert([{
+    id: id.trim().toUpperCase(),
+    label: label.trim(),
+  }]).select();
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json(data?.[0] ?? { id: id.trim(), label: label.trim() });
+});
+
+// DELETE /api/machines/:id — usuń maszynę (admin)
+app.delete('/api/machines/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
+  const { error } = await supabase.from('machines').delete().eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(204).send();
+});
+
 // POST /api/bin-requests — zgłoś pełny pojemnik
 app.post('/api/bin-requests', authenticateToken, async (req, res) => {
   const { binNumber, reason, requestedBy } = req.body;

@@ -232,31 +232,28 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
                     Nr pojemnika <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <input
-                      type="text"
+                    <select
                       value={binNumber}
                       onChange={e => handleBinNumberChange(e.target.value)}
-                      placeholder="np. 101"
-                      className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700 transition focus:border-blue-500 focus:bg-white focus:outline-none"
-                      list="bin-suggestions"
-                    />
-                    <datalist id="bin-suggestions">
+                      className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700 transition focus:border-blue-500 focus:bg-white focus:outline-none appearance-none"
+                    >
+                      <option value="">— Wybierz pojemnik —</option>
                       {bins.map(b => (
                         <option key={b.id} value={b.binNumber}>
-                          {b.binNumber} — {b.classificationCode} — {b.description}
+                          {b.binNumber} — {b.classificationCode}{b.description ? ` — ${b.description}` : ''}
                         </option>
                       ))}
-                    </datalist>
-                    {currentBinMatch ? (
+                    </select>
+                    {binNumber && bins.find(b => b.binNumber === binNumber) && (
                       <div className="mt-1 text-xs text-emerald-600">
-                        ✓ Rozpoznany: {currentBinMatch.classificationCode}
-                        {currentBinMatch.description && <> — {currentBinMatch.description}</>}
+                        ✓ Rozpoznany: {bins.find(b => b.binNumber === binNumber)?.description}
                       </div>
-                    ) : binNumber && !binsLoading ? (
+                    )}
+                    {binNumber && !bins.find(b => b.binNumber === binNumber) && !binsLoading && (
                       <div className="mt-1 text-xs text-amber-600">
-                        ⚠️ Nieznany numer pojemnika — możesz wpisać ręcznie
+                        ⚠️ Nieznany pojemnik — wpisz ręcznie w polu poniżej lub dodaj go w Panelu Admina
                       </div>
-                    ) : null}
+                    )}
                   </div>
                 </div>
               </div>
