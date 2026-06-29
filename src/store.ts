@@ -37,17 +37,49 @@ export function useWasteStore() {
   const [entries, setEntries] = useState<WasteEntry[]>(() => loadEntries());
   const [backendAvailable, setBackendAvailable] = useState<boolean | null>(null);
 
-  useEffect(() => {
+  // Ładuje dane z backendu (wspólna funkcja do wielokrotnego użycia)
+  const refreshEntries = useCallback(() => {
     getEntries()
       .then(remoteEntries => {
         setEntries(remoteEntries.map(normalizeEntry));
         setBackendAvailable(true);
       })
       .catch(() => {
-        setBackendAvailable(false);
-        setEntries(loadEntries());
+        // Jeśli backend był wcześniej dostępny, a teraz nie – zachowaj ostatnie dane
+        setBackendAvailable(prev => prev === null ? false : prev);
       });
   }, []);
+
+  useEffect(() => {
+    refreshEntries();
+  }, [refreshEntries]);
+
+  // Polling co 15 sekund – synchronizacja między kartami
+  useEffect(() => {
+    const interval = setInterval(() => {
+      getEntries()
+        .then(remoteEntries => {
+          setEntries(remoteEntries.map(normalizeEntry));
+          setBackendAvailable(true);
+        })
+        .catch(() => {
+          // ignoruj błędy pollingu – ciche odświeżanie
+        });
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Odśwież przy powrocie do karty (np. przełączenie między zakładkami)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshEntries();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [refreshEntries]);
 
   useEffect(() => {
     if (backendAvailable === false) {
