@@ -5,16 +5,15 @@ import {
 } from 'recharts';
 import { format, subDays } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { WasteEntry, WasteReason } from '../types';
+import { WasteEntry } from '../types';
 import PeriodFilter from './PeriodFilter';
 
 interface Props {
   entries: WasteEntry[];
 }
 
-const REASON_COLORS: Record<WasteReason, string> = {
+const REASON_COLORS: Record<string, string> = {
   awaria: '#ef4444',
-  blad_operatora: '#eab308',
   procesowy: '#94a3b8',
 };
 
@@ -22,7 +21,7 @@ export default function DashboardTab({ entries }: Props) {
   const [period, setPeriod] = useState(7);
 
   const filtered = useMemo(() => {
-    if (period <= 0) return entries; // wszystkie dane
+    if (period <= 0) return entries;
     const cutoff = format(subDays(new Date(), period), 'yyyy-MM-dd');
     return entries.filter(e => e.date >= cutoff);
   }, [entries, period]);
@@ -31,11 +30,9 @@ export default function DashboardTab({ entries }: Props) {
     const total = filtered.reduce((s, e) => s + e.weightKg, 0);
     const byReason = {
       awaria: filtered.filter(e => e.reason === 'awaria').reduce((s, e) => s + e.weightKg, 0),
-      blad_operatora: filtered.filter(e => e.reason === 'blad_operatora').reduce((s, e) => s + e.weightKg, 0),
       procesowy: filtered.filter(e => e.reason === 'procesowy').reduce((s, e) => s + e.weightKg, 0),
     };
 
-    // Trend w wybranym okresie (zagęszczenie: max ~30 punktów na wykresie)
     const daysToShow = period > 0 ? Math.min(period, 365) : 30;
     const step = Math.max(1, Math.floor(daysToShow / 30));
     const trend = Array.from({ length: Math.ceil(daysToShow / step) }, (_, i) => {
@@ -47,24 +44,19 @@ export default function DashboardTab({ entries }: Props) {
         day: format(d, 'd.MM', { locale: pl }),
         date: dateStr,
         awaria: parseFloat(dayEntries.filter(e => e.reason === 'awaria').reduce((s, e) => s + e.weightKg, 0).toFixed(1)),
-        blad_operatora: parseFloat(dayEntries.filter(e => e.reason === 'blad_operatora').reduce((s, e) => s + e.weightKg, 0).toFixed(1)),
         procesowy: parseFloat(dayEntries.filter(e => e.reason === 'procesowy').reduce((s, e) => s + e.weightKg, 0).toFixed(1)),
         total: parseFloat(dayEntries.reduce((s, e) => s + e.weightKg, 0).toFixed(1)),
       };
     });
 
-    // Today
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     const todayKg = filtered.filter(e => e.date === todayStr).reduce((s, e) => s + e.weightKg, 0);
     const todayCount = filtered.filter(e => e.date === todayStr).length;
 
-    // Total in period
     const periodEntries = trend.reduce((s, d) => s + d.total, 0);
 
-    // Pie data
     const pieData = [
       { name: 'Awaria maszyny', value: parseFloat(byReason.awaria.toFixed(1)), color: REASON_COLORS.awaria },
-      { name: 'Błąd operatora', value: parseFloat(byReason.blad_operatora.toFixed(1)), color: REASON_COLORS.blad_operatora },
       { name: 'Procesowy', value: parseFloat(byReason.procesowy.toFixed(1)), color: REASON_COLORS.procesowy },
     ].filter(d => d.value > 0);
 
@@ -94,18 +86,11 @@ export default function DashboardTab({ entries }: Props) {
       icon: '📈',
     },
     {
-      label: '🟥 Awarie maszyn',
+      label: '🔴 Awarie maszyn',
       value: `${stats.byReason.awaria.toFixed(1)} kg`,
       sub: stats.total > 0 ? `${((stats.byReason.awaria / stats.total) * 100).toFixed(0)}% całości` : '—',
       gradient: 'from-red-500 to-red-700',
       icon: '🔧',
-    },
-    {
-      label: '🟨 Błędy operatora',
-      value: `${stats.byReason.blad_operatora.toFixed(1)} kg`,
-      sub: stats.total > 0 ? `${((stats.byReason.blad_operatora / stats.total) * 100).toFixed(0)}% całości` : '—',
-      gradient: 'from-yellow-400 to-amber-500',
-      icon: '👷',
     },
     {
       label: '⬜ Procesowy',
@@ -120,7 +105,6 @@ export default function DashboardTab({ entries }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Header & period filter */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-slate-800">📊 Dashboard</h2>
@@ -129,8 +113,7 @@ export default function DashboardTab({ entries }: Props) {
         <PeriodFilter value={period} onChange={setPeriod} />
       </div>
 
-      {/* KPI CARDS */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         {kpiCards.map(card => (
           <div key={card.label} className={`rounded-2xl bg-gradient-to-br ${card.gradient} p-4 text-white shadow-lg`}>
             <div className="text-2xl mb-1">{card.icon}</div>
@@ -141,9 +124,7 @@ export default function DashboardTab({ entries }: Props) {
         ))}
       </div>
 
-      {/* CHARTS ROW */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Trend bar chart */}
         <div className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h3 className="mb-1 text-base font-bold text-slate-800">Trend odpadów (kg) – {periodLabel}</h3>
           <p className="mb-4 text-xs text-slate-400">Podział na przyczyny według dnia</p>
@@ -156,22 +137,19 @@ export default function DashboardTab({ entries }: Props) {
                 contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }}
                 formatter={(val: unknown, name: unknown) => [
                   `${val} kg`,
-                  name === 'awaria' ? '🟥 Awaria' : name === 'blad_operatora' ? '🟨 Błąd op.' : '⬜ Procesowy',
+                  name === 'awaria' ? '🔴 Awaria' : '⬜ Procesowy',
                 ]}
               />
               <Bar dataKey="awaria" stackId="a" fill="#ef4444" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="blad_operatora" stackId="a" fill="#eab308" radius={[0, 0, 0, 0]} />
               <Bar dataKey="procesowy" stackId="a" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
           <div className="mt-3 flex gap-4 text-xs text-slate-500">
             <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-red-500 inline-block"></span> Awaria</span>
-            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-yellow-400 inline-block"></span> Błąd op.</span>
             <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-slate-300 inline-block"></span> Procesowy</span>
           </div>
         </div>
 
-        {/* Pie */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col">
           <h3 className="mb-1 text-base font-bold text-slate-800">Podział według przyczyny</h3>
           <p className="mb-4 text-xs text-slate-400">{periodLabel} (kg)</p>
@@ -213,7 +191,6 @@ export default function DashboardTab({ entries }: Props) {
         </div>
       </div>
 
-      {/* Trend line */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="mb-1 text-base font-bold text-slate-800">Trend dzienny – łącznie (kg)</h3>
         <p className="mb-4 text-xs text-slate-400">{periodLabel}</p>

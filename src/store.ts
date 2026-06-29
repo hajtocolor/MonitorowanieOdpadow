@@ -5,6 +5,7 @@ import { getEntries, createEntry, deleteEntryApi, clearEntriesApi } from './api'
 function normalizeEntry(entry: any): WasteEntry {
   return {
     ...entry,
+    area: entry.area ?? entry.machineId ?? '',
     classificationNumber: entry.classificationNumber ?? '',
     binNumber: entry.binNumber ?? '',
   } as WasteEntry;

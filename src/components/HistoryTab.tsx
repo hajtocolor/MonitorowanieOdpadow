@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { WasteEntry, WasteReason, MACHINES, REASONS } from '../types';
+import { WasteEntry, WasteReason, AREAS, REASONS } from '../types';
 import { format } from 'date-fns';
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
 
 export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
   const [filterReason, setFilterReason] = useState<WasteReason | 'all'>('all');
-  const [filterMachine, setFilterMachine] = useState<string>('all');
+  const [filterArea, setFilterArea] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -19,10 +19,10 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
   const filtered = useMemo(() => {
     return entries.filter(e => {
       if (filterReason !== 'all' && e.reason !== filterReason) return false;
-      if (filterMachine !== 'all' && e.machineId !== filterMachine) return false;
+      if (filterArea !== 'all' && e.area !== filterArea) return false;
       if (search) {
         const q = search.toLowerCase();
-        if (!e.machineId.toLowerCase().includes(q) &&
+        if (!e.area.toLowerCase().includes(q) &&
             !e.classificationNumber.toLowerCase().includes(q) &&
             !e.binNumber.toLowerCase().includes(q) &&
             !e.comment?.toLowerCase().includes(q) &&
@@ -30,17 +30,17 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
       }
       return true;
     });
-  }, [entries, filterReason, filterMachine, search]);
+  }, [entries, filterReason, filterArea, search]);
 
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 
   const exportCSV = () => {
-    const header = ['Data', 'Godzina', 'Maszyna', 'Klasyfikacja', 'Pojemnik', 'Przyczyna', 'Waga_kg', 'Komentarz'];
+    const header = ['Data', 'Godzina', 'Obszar', 'Klasyfikacja', 'Pojemnik', 'Przyczyna', 'Waga_kg', 'Komentarz'];
     const rows = filtered.map(e => [
       e.date,
       e.time,
-      e.machineId,
+      e.area,
       e.classificationNumber,
       e.binNumber,
       REASONS[e.reason].label,
@@ -57,7 +57,7 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
     URL.revokeObjectURL(url);
   };
 
-  const allMachineIds = [...new Set(entries.map(e => e.machineId))].sort();
+  const allAreaIds = [...new Set(entries.map(e => e.area))].sort();
 
   return (
     <div className="space-y-5">
@@ -103,7 +103,7 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
             type="text"
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
-            placeholder="🔍 Szukaj maszyny, daty, komentarza..."
+            placeholder="🔍 Szukaj obszaru, daty, komentarza..."
             className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm focus:border-indigo-400 focus:outline-none"
           />
         </div>
@@ -113,19 +113,18 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
           className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
         >
           <option value="all">Wszystkie przyczyny</option>
-          <option value="awaria">🟥 Awaria maszyny</option>
-          <option value="blad_operatora">🟨 Błąd operatora</option>
+          <option value="awaria">🔴 Awaria maszyny</option>
           <option value="procesowy">⬜ Procesowy</option>
         </select>
         <select
-          value={filterMachine}
-          onChange={e => { setFilterMachine(e.target.value); setPage(1); }}
+          value={filterArea}
+          onChange={e => { setFilterArea(e.target.value); setPage(1); }}
           className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
         >
-          <option value="all">Wszystkie maszyny</option>
-          {allMachineIds.map(id => {
-            const m = MACHINES.find(m => m.id === id);
-            return <option key={id} value={id}>{m?.label ?? id}</option>;
+          <option value="all">Wszystkie obszary</option>
+          {allAreaIds.map(id => {
+            const a = AREAS.find(a => a.id === id);
+            return <option key={id} value={id}>{a?.label ?? id}</option>;
           })}
         </select>
       </div>
@@ -134,9 +133,9 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
       <div className="flex flex-wrap gap-4 text-sm text-slate-600">
         <span>Znaleziono: <strong>{filtered.length}</strong> wpisów</span>
         <span>Łącznie: <strong>{filtered.reduce((s, e) => s + e.weightKg, 0).toFixed(1)} kg</strong></span>
-        {filterReason !== 'all' || filterMachine !== 'all' || search ? (
+        {filterReason !== 'all' || filterArea !== 'all' || search ? (
           <button
-            onClick={() => { setFilterReason('all'); setFilterMachine('all'); setSearch(''); setPage(1); }}
+            onClick={() => { setFilterReason('all'); setFilterArea('all'); setSearch(''); setPage(1); }}
             className="text-indigo-600 hover:underline font-medium"
           >
             ✕ Wyczyść filtry
@@ -160,7 +159,7 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
                   <tr className="border-b border-slate-100 bg-slate-50">
                     <th className="px-5 py-3 text-left font-semibold text-slate-500">Data</th>
                     <th className="px-3 py-3 text-left font-semibold text-slate-500">Godz.</th>
-                    <th className="px-3 py-3 text-left font-semibold text-slate-500">Maszyna</th>
+                    <th className="px-3 py-3 text-left font-semibold text-slate-500">Obszar</th>
                     <th className="px-3 py-3 text-left font-semibold text-slate-500">Klasyfikacja</th>
                     <th className="px-3 py-3 text-left font-semibold text-slate-500">Pojemnik</th>
                     <th className="px-3 py-3 text-left font-semibold text-slate-500">Przyczyna</th>
@@ -179,7 +178,7 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
                         </td>
                         <td className="px-3 py-3 text-slate-500 whitespace-nowrap">{entry.time}</td>
                         <td className="px-3 py-3">
-                          <span className="font-bold text-slate-800">{entry.machineId}</span>
+                          <span className="font-bold text-slate-800">{entry.area}</span>
                         </td>
                         <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{entry.classificationNumber}</td>
                         <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{entry.binNumber}</td>
@@ -215,7 +214,7 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
                     <span className="text-xl mt-0.5">{r.emoji}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-800">{entry.machineId}</span>
+                        <span className="font-bold text-slate-800">{entry.area}</span>
                         <span className="text-xs text-slate-400">{entry.date} {entry.time}</span>
                       </div>
                       <div className="mt-0.5 text-xs text-slate-500">

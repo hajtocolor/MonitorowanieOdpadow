@@ -20,22 +20,24 @@ export default function ReasonAnalysisTab({ entries }: Props) {
   }, [entries, period]);
 
   const data = useMemo(() => {
-    return Array.from({ length: period }, (_, i) => {
-      const d = subDays(new Date(), period - 1 - i);
+    const step = Math.max(1, Math.floor(period / 30));
+    const points = Math.ceil(period / step);
+    return Array.from({ length: points }, (_, i) => {
+      const dayOffset = period - 1 - i * step;
+      const d = subDays(new Date(), dayOffset);
       const dateStr = format(d, 'yyyy-MM-dd');
       const dayEntries = filtered.filter(e => e.date === dateStr);
       return {
         day: format(d, 'd MMM', { locale: pl }),
         dateStr,
         awaria: parseFloat(dayEntries.filter(e => e.reason === 'awaria').reduce((s, e) => s + e.weightKg, 0).toFixed(1)),
-        blad_operatora: parseFloat(dayEntries.filter(e => e.reason === 'blad_operatora').reduce((s, e) => s + e.weightKg, 0).toFixed(1)),
         procesowy: parseFloat(dayEntries.filter(e => e.reason === 'procesowy').reduce((s, e) => s + e.weightKg, 0).toFixed(1)),
       };
-    }).filter((_, i) => period <= 14 || i % 2 === 0); // thin out for 30-day view
+    });
   }, [filtered, period]);
 
   const summaryByReason = useMemo(() => {
-    const reasons: WasteReason[] = ['awaria', 'blad_operatora', 'procesowy'];
+    const reasons: WasteReason[] = ['awaria', 'procesowy'];
     return reasons.map(r => {
       const rEntries = filtered.filter(e => e.reason === r);
       const total = rEntries.reduce((s, e) => s + e.weightKg, 0);
@@ -51,14 +53,14 @@ export default function ReasonAnalysisTab({ entries }: Props) {
     });
   }, [filtered]);
 
-  // Most common machines per reason
-  const machinesByReason = useMemo(() => {
-    const reasons: WasteReason[] = ['awaria', 'blad_operatora', 'procesowy'];
+  // Most common areas per reason
+  const areasByReason = useMemo(() => {
+    const reasons: WasteReason[] = ['awaria', 'procesowy'];
     return Object.fromEntries(reasons.map(r => {
-      const machineEntries = filtered.filter(e => e.reason === r && e.machineId);
+      const areaEntries = filtered.filter(e => e.reason === r && e.area);
       const freq: Record<string, number> = {};
-      machineEntries.forEach(e => {
-        const key = e.machineId;
+      areaEntries.forEach(e => {
+        const key = e.area;
         freq[key] = (freq[key] || 0) + 1;
       });
       const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 3);
@@ -68,7 +70,6 @@ export default function ReasonAnalysisTab({ entries }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Header & period filter */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-slate-800">🤖 Analiza według przyczyny</h2>
@@ -77,8 +78,7 @@ export default function ReasonAnalysisTab({ entries }: Props) {
         <PeriodFilter value={period} onChange={setPeriod} />
       </div>
 
-      {/* Summary cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         {summaryByReason.map(r => (
           <div key={r.reason} className={`rounded-2xl border-2 ${r.border} ${r.bg} p-5`}>
             <div className="flex items-start justify-between">
@@ -104,22 +104,20 @@ export default function ReasonAnalysisTab({ entries }: Props) {
                 <div className="text-xs text-slate-500">kg / wpis</div>
               </div>
             </div>
-            {/* Progress bar */}
             <div className="mt-3 h-2 w-full rounded-full bg-white/60">
               <div
                 className={`h-2 rounded-full ${
-                  r.reason === 'awaria' ? 'bg-red-500' : r.reason === 'blad_operatora' ? 'bg-yellow-400' : 'bg-slate-400'
+                  r.reason === 'awaria' ? 'bg-red-500' : 'bg-slate-400'
                 }`}
                 style={{ width: `${r.pct}%` }}
               />
             </div>
-            {/* Top machines */}
-            {machinesByReason[r.reason]?.length > 0 && (
+            {areasByReason[r.reason]?.length > 0 && (
               <div className="mt-3 space-y-1">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Najczęstsze maszyny</p>
-                {machinesByReason[r.reason].map(([machineId, count]) => (
-                  <div key={machineId} className="flex justify-between text-xs text-slate-600">
-                    <span className="truncate font-medium">{machineId}</span>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Najczęstsze obszary</p>
+                {areasByReason[r.reason].map(([areaId, count]) => (
+                  <div key={areaId} className="flex justify-between text-xs text-slate-600">
+                    <span className="truncate font-medium">{areaId}</span>
                     <span className="ml-2 shrink-0 font-semibold">{count} wpisów</span>
                   </div>
                 ))}
@@ -129,10 +127,9 @@ export default function ReasonAnalysisTab({ entries }: Props) {
         ))}
       </div>
 
-      {/* Stacked bar chart over time */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="mb-1 text-base font-bold text-slate-800">Trend dzienny według przyczyny (kg)</h3>
-        <p className="mb-4 text-xs text-slate-400">Ostatnie {period} dni – co {period > 14 ? '2' : '1'} dzień</p>
+        <p className="mb-4 text-xs text-slate-400">Ostatnie {period} dni</p>
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -150,22 +147,19 @@ export default function ReasonAnalysisTab({ entries }: Props) {
               contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }}
               formatter={(v: unknown, name: unknown) => [
                 `${v} kg`,
-                name === 'awaria' ? '🟥 Awaria maszyny' : name === 'blad_operatora' ? '🟨 Błąd operatora' : '⬜ Procesowy',
+                name === 'awaria' ? '🔴 Awaria maszyny' : '⬜ Procesowy',
               ]}
             />
             <Bar dataKey="awaria" stackId="a" fill="#ef4444" />
-            <Bar dataKey="blad_operatora" stackId="a" fill="#eab308" />
             <Bar dataKey="procesowy" stackId="a" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
         <div className="mt-2 flex gap-4 text-xs text-slate-500">
           <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-red-500 inline-block"></span> Awaria maszyny</span>
-          <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-yellow-400 inline-block"></span> Błąd operatora</span>
           <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-slate-300 inline-block"></span> Procesowy</span>
         </div>
       </div>
 
-      {/* Insight box */}
       {filtered.length > 0 && (() => {
         const dominant = summaryByReason.sort((a, b) => b.totalKg - a.totalKg)[0];
         return (
@@ -175,8 +169,7 @@ export default function ReasonAnalysisTab({ entries }: Props) {
               W wybranym okresie dominującą przyczyną odpadów jest{' '}
               <strong>{dominant.label}</strong> ({dominant.emoji}) – stanowiące{' '}
               <strong>{dominant.pct}%</strong> łącznych odpadów ({dominant.totalKg} kg).
-              {dominant.reason === 'awaria' && ' Zalecana analiza historii awarii maszyn i przegląd prewencyjny.'}
-              {dominant.reason === 'blad_operatora' && ' Zalecane dodatkowe szkolenie lub weryfikacja procedur operacyjnych.'}
+              {dominant.reason === 'awaria' && ' Zalecana analiza historii awarii i przegląd prewencyjny.'}
               {dominant.reason === 'procesowy' && ' Poziom odpadów procesowych jest dominujący – sprawdź czy można zoptymalizować parametry procesu.'}
             </p>
           </div>

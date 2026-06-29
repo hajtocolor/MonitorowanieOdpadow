@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { WasteEntry, WasteReason, MACHINES, REASONS, Bin } from '../types';
+import { WasteEntry, WasteReason, AREAS, REASONS, Bin } from '../types';
 import { useWasteStore } from '../store';
 import { getBins } from '../api';
 import { format } from 'date-fns';
@@ -14,19 +14,19 @@ function getNow() {
 
 function readQrParams() {
   const params = new URLSearchParams(window.location.search);
-  const machine = params.get('machine') || '';
+  const area = params.get('area') || '';
   const reason = params.get('reason') as WasteReason | null;
   const classificationNumber = params.get('classificationNumber') || '';
   const binNumber = params.get('binNumber') || '';
 
   // Clear URL params after reading them (so refresh doesn't re-prefill)
-  if (params.has('machine') || params.has('reason')) {
+  if (params.has('area') || params.has('reason')) {
     window.history.replaceState({}, '', window.location.pathname);
   }
 
   return {
-    machine,
-    reason: reason && ['awaria', 'blad_operatora', 'procesowy'].includes(reason) ? reason : null,
+    area,
+    reason: reason && ['awaria', 'procesowy'].includes(reason) ? reason : null,
     classificationNumber,
     binNumber,
   };
@@ -41,7 +41,7 @@ interface Props {
 
 export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete }: Props) {
   const qrParams = useRef(readQrParams());
-  const [machine, setMachine] = useState(qrParams.current.machine);
+  const [area, setArea] = useState(qrParams.current.area);
   const [classificationNumber, setClassificationNumber] = useState(qrParams.current.classificationNumber);
   const [binNumber, setBinNumber] = useState(qrParams.current.binNumber);
   const [reason, setReason] = useState<WasteReason>(qrParams.current.reason || 'procesowy');
@@ -66,14 +66,14 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
       .catch(() => setBinsLoading(false));
   }, []);
 
-  // Auto-fill classification & filter machines when bin number changes
+  // Auto-fill classification & filter bins when bin number changes
   const handleBinNumberChange = (value: string) => {
     setBinNumber(value);
     const match = bins.find(b => b.binNumber === value.trim());
     if (match) {
       setClassificationNumber(match.classificationCode);
-      if (match.machineIds && match.machineIds.length > 0) {
-        setMachine(match.machineIds[0]);
+      if (match.areaIds && match.areaIds.length > 0) {
+        setArea(match.areaIds[0]);
       }
     }
   };
@@ -85,7 +85,7 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
   const [binReportError, setBinReportError] = useState('');
   const binReportTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isQrMode = !!qrParams.current.machine;
+  const isQrMode = !!qrParams.current.area;
 
   // Auto-focus weight field when coming from QR scan
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!machine) { setError('Wybierz numer maszyny.'); return; }
+    if (!area) { setError('Wybierz obszar.'); return; }
     if (!classificationNumber.trim()) { setError('Podaj numer klasyfikacji odpadu.'); return; }
     if (!binNumber.trim()) { setError('Podaj numer pojemnika.'); return; }
     const w = parseFloat(weight.replace(',', '.'));
@@ -113,7 +113,7 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
     addEntry({
       date: current.date,
       time: current.time,
-      machineId: machine,
+      area,
       classificationNumber: classificationNumber.trim(),
       binNumber: binNumber.trim(),
       reason,
@@ -132,8 +132,8 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
   };
 
   const handleReportFullBin = async () => {
-    if (!machine) {
-      setBinReportError('Najpierw wybierz maszynę w formularzu powyżej.');
+    if (!area) {
+      setBinReportError('Najpierw wybierz obszar w formularzu powyżej.');
       return;
     }
     setBinReportLoading(true);
@@ -145,7 +145,7 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
       await createBinRequest({
         binNumber: binNumber || '(nie podano)',
         reason: fullBinReason,
-        requestedBy: machine,
+        requestedBy: area,
       });
       setBinReportSuccess(true);
       if (binReportTimer.current) clearTimeout(binReportTimer.current);
@@ -173,7 +173,7 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
             { step: '1', icon: '⚖️', label: 'Zważ odpad' },
             { step: '2', icon: '🗑️', label: 'Wrzuć do pojemnika' },
             { step: '3', icon: '📱', label: 'Otwórz ten system' },
-            { step: '4', icon: '✏️', label: 'Wpisz maszynę + wagę' },
+            { step: '4', icon: '✏️', label: 'Wpisz obszar + wagę' },
           ].map(({ step, icon, label }) => (
             <div key={step} className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/20 text-xs font-bold">{step}</span>
@@ -197,19 +197,19 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Machine */}
+              {/* Area */}
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                  Numer maszyny <span className="text-red-500">*</span>
+                  Obszar <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={machine}
-                  onChange={e => setMachine(e.target.value)}
+                  value={area}
+                  onChange={e => setArea(e.target.value)}
                   className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-base font-medium text-slate-800 transition focus:border-blue-500 focus:bg-white focus:outline-none"
                 >
-                  <option value="">— Wybierz maszynę —</option>
-                  {MACHINES.map(m => (
-                    <option key={m.id} value={m.id}>{m.label}</option>
+                  <option value="">— Wybierz obszar —</option>
+                  {AREAS.map(a => (
+                    <option key={a.id} value={a.id}>{a.label}</option>
                   ))}
                 </select>
               </div>
@@ -261,7 +261,7 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
               {/* Reason */}
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700">Przyczyna odpadów</label>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {(Object.entries(REASONS) as [WasteReason, typeof REASONS[WasteReason]][]).map(([key, val]) => (
                     <button
                       key={key}
@@ -352,7 +352,6 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
                     <div className={`text-sm font-bold ${val.color}`}>{val.label}</div>
                     <div className="text-xs text-slate-500">
                       {key === 'awaria' && 'Pojemnik CZERWONY'}
-                      {key === 'blad_operatora' && 'Pojemnik ŻÓŁTY'}
                       {key === 'procesowy' && 'Pojemnik SZARY/BIAŁY'}
                     </div>
                   </div>
@@ -364,7 +363,7 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
             <p className="text-xs font-bold uppercase tracking-wider text-amber-700 mb-2">⚠️ Ważna zasada</p>
             <p className="text-sm text-amber-800">
-              System NIE służy do oceny operatorów. Celem jest wykrycie awarii maszyn, nie wskazywanie winnych.
+              System NIE służy do oceny operatorów. Celem jest wykrycie awarii, nie wskazywanie winnych.
             </p>
           </div>
         </div>
@@ -387,7 +386,6 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
             >
               <option value="procesowy">⬜ Procesowy</option>
               <option value="awaria">🔴 Awaria</option>
-              <option value="blad_operatora">🟡 Błąd operatora</option>
             </select>
             <button
               onClick={handleReportFullBin}
@@ -434,7 +432,7 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
                   <span className="text-xl">{r.emoji}</span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-700">{entry.machineId}</span>
+                      <span className="font-semibold text-slate-700">{entry.area}</span>
                       <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${r.bg} ${r.color} ${r.border} border`}>
                         {r.label}
                       </span>

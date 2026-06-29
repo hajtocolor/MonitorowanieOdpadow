@@ -21,7 +21,7 @@ const TABS: Array<{ id: Tab; label: string; icon: string; desc: string }> = [
   { id: 'register', label: 'Rejestr', icon: '📝', desc: 'Wpisz odpad' },
   { id: 'dashboard', label: 'Dashboard', icon: '📊', desc: 'Podsumowanie' },
   { id: 'reason', label: 'Przyczyny', icon: '🤖', desc: 'Analiza' },
-  { id: 'machine', label: 'Maszyny', icon: '⚙️', desc: 'Ranking' },
+  { id: 'machine', label: 'Obszary', icon: '🗺️', desc: 'Ranking' },
   { id: 'history', label: 'Historia', icon: '📋', desc: 'Wszystkie wpisy' },
   { id: 'qr', label: 'QR Faza 2', icon: '🚀', desc: 'Kody QR' },
   { id: 'rules', label: 'Zasady', icon: '📜', desc: 'Instrukcja' },

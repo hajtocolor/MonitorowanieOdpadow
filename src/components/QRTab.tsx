@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { REASONS, WasteReason, MACHINES } from '../types';
+import { REASONS, WasteReason, AREAS } from '../types';
 import QRCode from 'qrcode';
 
 const QR_BINS = [
@@ -13,17 +13,6 @@ const QR_BINS = [
     textClass: 'text-red-700',
     qrBg: '#ef4444',
     classificationNumber: '12.01.01',
-  },
-  {
-    reason: 'blad_operatora' as WasteReason,
-    title: 'Pojemnik ŻÓŁTY',
-    subtitle: 'Błąd operatora',
-    bgClass: 'bg-yellow-400',
-    lightBg: 'bg-yellow-50',
-    border: 'border-yellow-300',
-    textClass: 'text-yellow-700',
-    qrBg: '#eab308',
-    classificationNumber: '17.03.04',
   },
   {
     reason: 'procesowy' as WasteReason,
@@ -80,7 +69,7 @@ function QRCodeImage({ url, label }: QRCodeImageProps) {
 }
 
 export default function QRTab() {
-  const [selectedMachine, setSelectedMachine] = useState(MACHINES[0]?.id || 'M01');
+  const [selectedArea, setSelectedArea] = useState(AREAS[0]?.id || 'VSP');
   const [selectedBin, setSelectedBin] = useState<number | null>(null);
   const bin = selectedBin !== null ? QR_BINS[selectedBin] : null;
 
@@ -88,9 +77,9 @@ export default function QRTab() {
     ? `${window.location.protocol}//${window.location.host}`
     : 'https://monitorowanieodpadow.vercel.app';
 
-  const generateQrUrl = (machineId: string, reason: WasteReason, classificationNumber: string, binNumber: string) => {
+  const generateQrUrl = (areaId: string, reason: WasteReason, classificationNumber: string, binNumber: string) => {
     const params = new URLSearchParams({
-      machine: machineId,
+      area: areaId,
       reason,
       classificationNumber,
       binNumber,
@@ -106,7 +95,7 @@ export default function QRTab() {
           <div>
             <h2 className="text-xl font-bold">🚀 Faza 2 – Kody QR na pojemnikach</h2>
             <p className="mt-1 text-indigo-100 text-sm">
-              Operator skanuje → wpisuje tylko wagę → gotowe. Kody QR zawierają informacje o stanowisku i pojemniku.
+              Operator skanuje → wpisuje tylko wagę → gotowe. Kody QR zawierają informacje o obszarze i pojemniku.
             </p>
           </div>
           <div className="rounded-xl bg-white/20 px-3 py-1.5 text-sm font-semibold">
@@ -129,30 +118,30 @@ export default function QRTab() {
         </div>
       </div>
 
-      {/* Machine selector */}
+      {/* Area selector */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h3 className="text-sm font-bold uppercase tracking-widest text-slate-500 mb-3">
-          🏭 Wybierz stanowisko / maszynę
+          🏭 Wybierz obszar
         </h3>
         <div className="flex flex-wrap gap-2">
-          {MACHINES.map(m => (
+          {AREAS.map(a => (
             <button
-              key={m.id}
-              onClick={() => setSelectedMachine(m.id)}
+              key={a.id}
+              onClick={() => setSelectedArea(a.id)}
               className={`rounded-xl px-4 py-2 text-sm font-semibold transition border-2 ${
-                selectedMachine === m.id
+                selectedArea === a.id
                   ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
                   : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
               }`}
             >
-              {m.label}
+              {a.label}
             </button>
           ))}
         </div>
       </div>
 
       {/* Bin cards with QR */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         {QR_BINS.map((binItem, idx) => {
           const r = REASONS[binItem.reason];
           return (
@@ -175,12 +164,12 @@ export default function QRTab() {
                 <div className="rounded-xl border border-slate-200 bg-white p-3">
                   <QRCodeImage
                     url={generateQrUrl(
-                      selectedMachine,
+                      selectedArea,
                       binItem.reason,
                       binItem.classificationNumber,
                       `${idx + 1}`
                     )}
-                    label={`${binItem.title} - ${selectedMachine}`}
+                    label={`${binItem.title} - ${selectedArea}`}
                   />
                 </div>
               </div>
@@ -189,14 +178,14 @@ export default function QRTab() {
                 onClick={(e) => {
                   e.stopPropagation();
                   const url = generateQrUrl(
-                    selectedMachine,
+                    selectedArea,
                     binItem.reason,
                     binItem.classificationNumber,
                     `${idx + 1}`
                   );
                   QRCode.toDataURL(url, { width: 400, margin: 2 }).then(dataUrl => {
                     const link = document.createElement('a');
-                    link.download = `qr-${binItem.reason}-${selectedMachine}.png`;
+                    link.download = `qr-${binItem.reason}-${selectedArea}.png`;
                     link.href = dataUrl;
                     link.click();
                   });
@@ -218,8 +207,8 @@ export default function QRTab() {
           </h3>
           <div className="grid gap-3">
             <div className="flex items-center justify-between rounded-xl bg-white/70 p-3">
-              <span className="text-sm text-slate-600">Stanowisko / Maszyna</span>
-              <span className="font-bold text-slate-800">{selectedMachine}</span>
+              <span className="text-sm text-slate-600">Obszar</span>
+              <span className="font-bold text-slate-800">{selectedArea}</span>
             </div>
             <div className="flex items-center justify-between rounded-xl bg-white/70 p-3">
               <span className="text-sm text-slate-600">Przyczyna</span>
@@ -248,8 +237,8 @@ export default function QRTab() {
           {[
             {
               step: '1',
-              title: 'Wybierz maszynę i pojemnik',
-              desc: 'Wybierz stanowisko/maszynę powyżej, a następnie kliknij na pojemnik. Pojawi się gotowy kod QR.',
+              title: 'Wybierz obszar i pojemnik',
+              desc: 'Wybierz obszar powyżej, a następnie kliknij na pojemnik. Pojawi się gotowy kod QR.',
             },
             {
               step: '2',

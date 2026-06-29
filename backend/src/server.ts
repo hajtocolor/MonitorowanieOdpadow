@@ -150,13 +150,13 @@ app.get('/api/entries', authenticateToken, async (_req, res) => {
 });
 
 function validateEntry(body: any) {
-  const { id, date, time, machineId, classificationNumber, binNumber, reason, weightKg, comment, createdAt } = body;
+  const { id, date, time, area, classificationNumber, binNumber, reason, weightKg, comment, createdAt } = body;
   if (typeof date !== 'string' || !date) return 'Nieprawidłowa data';
   if (typeof time !== 'string' || !time) return 'Nieprawidłowa godzina';
-  if (typeof machineId !== 'string' || !machineId) return 'Nieprawidłowy numer maszyny';
+  if (typeof area !== 'string' || !area) return 'Nieprawidłowy obszar';
   if (typeof classificationNumber !== 'string' || !classificationNumber.trim()) return 'Nieprawidłowy numer klasyfikacji odpadu';
   if (typeof binNumber !== 'string' || !binNumber.trim()) return 'Nieprawidłowy numer pojemnika';
-  if (typeof reason !== 'string' || !['awaria', 'blad_operatora', 'procesowy'].includes(reason)) return 'Nieprawidłowa przyczyna';
+  if (typeof reason !== 'string' || !['awaria', 'procesowy'].includes(reason)) return 'Nieprawidłowa przyczyna';
   if (typeof weightKg !== 'number' || Number.isNaN(weightKg) || weightKg <= 0) return 'Nieprawidłowa waga';
   if (comment !== undefined && typeof comment !== 'string') return 'Nieprawidłowy komentarz';
   if (typeof createdAt !== 'string' || !createdAt) return 'Nieprawidłowy czas utworzenia';
@@ -168,7 +168,7 @@ type WasteEntryRow = {
   id: string;
   date: string;
   time: string;
-  machineId: string;
+  area: string;
   classificationNumber: string;
   binNumber: string;
   reason: string;
@@ -188,7 +188,7 @@ app.post('/api/entries', authenticateToken, async (req, res) => {
         : `entry-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     date: req.body.date,
     time: req.body.time,
-    machineId: req.body.machineId,
+    area: req.body.area,
     classificationNumber: req.body.classificationNumber,
     binNumber: req.body.binNumber,
     reason: req.body.reason,
@@ -401,35 +401,35 @@ app.delete('/api/bins/:id', authenticateToken, requireRole(['admin']), async (re
   res.status(204).send();
 });
 
-// === MACHINES (admin) ===
+// === AREAS (admin) ===
 
-// GET /api/machines — lista maszyn (z bazy, nie z kodu)
-app.get('/api/machines', authenticateToken, async (_req, res) => {
+// GET /api/areas — lista obszarów (z bazy)
+app.get('/api/areas', authenticateToken, async (_req, res) => {
   const { data, error } = await supabase
-    .from('machines')
+    .from('areas')
     .select('*')
     .order('label', { ascending: true });
 
   if (error) return res.status(500).json({ error: error.message });
 
-  const mapped = (data ?? []).map((m: any) => ({
-    id: m.id,
-    label: m.label,
+  const mapped = (data ?? []).map((a: any) => ({
+    id: a.id,
+    label: a.label,
   }));
   res.json(mapped);
 });
 
-// POST /api/machines — dodaj maszynę (admin)
-app.post('/api/machines', authenticateToken, requireRole(['admin']), async (req, res) => {
+// POST /api/areas — dodaj obszar (admin)
+app.post('/api/areas', authenticateToken, requireRole(['admin']), async (req, res) => {
   const { id, label } = req.body;
   if (!id || typeof id !== 'string' || !id.trim()) {
-    return res.status(400).json({ error: 'Nieprawidłowy identyfikator maszyny' });
+    return res.status(400).json({ error: 'Nieprawidłowy identyfikator obszaru' });
   }
   if (!label || typeof label !== 'string' || !label.trim()) {
-    return res.status(400).json({ error: 'Nieprawidłowa nazwa maszyny' });
+    return res.status(400).json({ error: 'Nieprawidłowa nazwa obszaru' });
   }
 
-  const { data, error } = await supabase.from('machines').insert([{
+  const { data, error } = await supabase.from('areas').insert([{
     id: id.trim().toUpperCase(),
     label: label.trim(),
   }]).select();
@@ -438,9 +438,9 @@ app.post('/api/machines', authenticateToken, requireRole(['admin']), async (req,
   res.status(201).json(data?.[0] ?? { id: id.trim(), label: label.trim() });
 });
 
-// DELETE /api/machines/:id — usuń maszynę (admin)
-app.delete('/api/machines/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
-  const { error } = await supabase.from('machines').delete().eq('id', req.params.id);
+// DELETE /api/areas/:id — usuń obszar (admin)
+app.delete('/api/areas/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
+  const { error } = await supabase.from('areas').delete().eq('id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
   res.status(204).send();
 });
@@ -452,11 +452,11 @@ app.post('/api/bin-requests', authenticateToken, async (req, res) => {
   if (!binNumber || typeof binNumber !== 'string' || !binNumber.trim()) {
     return res.status(400).json({ error: 'Nieprawidłowy numer pojemnika' });
   }
-  if (!reason || !['awaria', 'blad_operatora', 'procesowy'].includes(reason)) {
+  if (!reason || !['awaria', 'procesowy'].includes(reason)) {
     return res.status(400).json({ error: 'Nieprawidłowa przyczyna' });
   }
   if (!requestedBy || typeof requestedBy !== 'string' || !requestedBy.trim()) {
-    return res.status(400).json({ error: 'Nieprawidłowa maszyna zgłaszająca' });
+    return res.status(400).json({ error: 'Nieprawidłowy obszar zgłaszający' });
   }
 
   const id = `binreq-${Date.now()}-${Math.random().toString(36).slice(2)}`;

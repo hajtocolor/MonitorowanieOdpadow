@@ -114,7 +114,7 @@ export function getBins() {
   }).then(handleJsonResponse) as Promise<Bin[]>;
 }
 
-export function createBin(data: { binNumber: string; classificationCode: string; description?: string; machineIds?: string[] }) {
+export function createBin(data: { binNumber: string; classificationCode: string; description?: string; areaIds?: string[] }) {
   return fetch(`${API_PREFIX}/bins`, {
     method: 'POST',
     headers: buildHeaders(true),
@@ -131,27 +131,27 @@ export function deleteBin(id: string) {
   });
 }
 
-// === MACHINES ===
+// === AREAS (dawniej MACHINES) ===
 
-export function getMachines(): Promise<{ id: string; label: string }[]> {
-  return fetch(`${API_PREFIX}/machines`, {
+export function getAreas(): Promise<{ id: string; label: string }[]> {
+  return fetch(`${API_PREFIX}/areas`, {
     headers: buildHeaders(false),
   }).then(handleJsonResponse);
 }
 
-export function createMachine(data: { id: string; label: string }) {
-  return fetch(`${API_PREFIX}/machines`, {
+export function createArea(data: { id: string; label: string }) {
+  return fetch(`${API_PREFIX}/areas`, {
     method: 'POST',
     headers: buildHeaders(true),
     body: JSON.stringify(data),
   }).then(handleJsonResponse);
 }
 
-export function deleteMachine(id: string) {
-  return fetch(`${API_PREFIX}/machines/${encodeURIComponent(id)}`, {
+export function deleteArea(id: string) {
+  return fetch(`${API_PREFIX}/areas/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers: buildHeaders(false),
   }).then(response => {
-    if (!response.ok) throw new Error('Nie udało się usunąć maszyny');
+    if (!response.ok) throw new Error('Nie udało się usunąć obszaru');
   });
 }
