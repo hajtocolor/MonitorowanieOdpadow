@@ -3,6 +3,10 @@ import { UserRole } from './types';
 const TOKEN_KEY = 'wastetrack_token';
 const ROLE_KEY = 'wastetrack_role';
 
+// Używamy sessionStorage zamiast localStorage – każda karta ma własną, izolowaną sesję.
+// Dzięki temu worker i admin mogą być zalogowani w osobnych kartach bez wzajemnego nadpisywania tokenów.
+const storage = sessionStorage;
+
 export interface LoginResult {
   success: boolean;
   role?: UserRole;
@@ -25,8 +29,8 @@ export async function login(role: UserRole, password: string): Promise<LoginResu
     }
 
     const data = await response.json();
-    localStorage.setItem(TOKEN_KEY, data.token);
-    localStorage.setItem(ROLE_KEY, data.role);
+    storage.setItem(TOKEN_KEY, data.token);
+    storage.setItem(ROLE_KEY, data.role);
     return { success: true, role: data.role, token: data.token };
   } catch {
     return { success: false, error: 'Nie można połączyć się z serwerem' };
@@ -34,7 +38,7 @@ export async function login(role: UserRole, password: string): Promise<LoginResu
 }
 
 export function getStoredRole(): UserRole | null {
-  const stored = localStorage.getItem(ROLE_KEY);
+  const stored = storage.getItem(ROLE_KEY);
   if (stored === 'admin' || stored === 'worker') {
     return stored;
   }
@@ -42,12 +46,12 @@ export function getStoredRole(): UserRole | null {
 }
 
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  return storage.getItem(TOKEN_KEY);
 }
 
 export function logout() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(ROLE_KEY);
+  storage.removeItem(TOKEN_KEY);
+  storage.removeItem(ROLE_KEY);
 }
 
 export function getAuthHeaders(): Record<string, string> {
