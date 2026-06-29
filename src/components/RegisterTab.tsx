@@ -251,9 +251,14 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
                       className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700 transition focus:border-blue-500 focus:bg-white focus:outline-none appearance-none"
                     >
                       <option value="">— Wybierz pojemnik —</option>
-                      {bins.map(b => (
+                      {bins.filter(b => b.binNumber && b.binNumber.trim() && b.binNumber !== '--').map(b => (
                         <option key={b.id} value={b.binNumber}>
                           {b.binNumber} — {b.classificationCode}{b.description ? ` — ${b.description}` : ''}
+                        </option>
+                      ))}
+                      {bins.filter(b => !b.binNumber || !b.binNumber.trim() || b.binNumber === '--').map(b => (
+                        <option key={`empty-${b.id}`} value={b.id}>
+                          {b.id} — {b.classificationCode}{b.description ? ` — ${b.description}` : ''}
                         </option>
                       ))}
                     </select>

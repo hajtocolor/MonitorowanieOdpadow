@@ -66,11 +66,10 @@ export interface BinRequestPayload {
   requestedBy: string;
 }
 
-// Supabase zwraca snake_case, frontend oczekuje camelCase — mapujemy
 function mapBinRequest(raw: any): any {
   return {
     id: raw.id,
-    binNumber: raw.bin_number ?? raw.binNumber,
+    binNumber: raw.bin_number ?? raw.binNumber ?? '',
     reason: raw.reason,
     requestedBy: raw.requested_by ?? raw.requestedBy,
     requestedAt: raw.requested_at ?? raw.requestedAt,
@@ -102,7 +101,7 @@ export function resolveBinRequest(id: string) {
       const payload = await response.json().catch(() => null);
       throw new Error(payload?.error || 'Nie udało się oznaczyć zgłoszenia jako zrealizowane');
     }
-  return response.json().then(mapBinRequest);
+    return response.json().then(mapBinRequest);
   });
 }
 
@@ -113,10 +112,10 @@ export function getBins() {
     headers: buildHeaders(false),
   }).then(handleJsonResponse).then((data: any[]) => (data ?? []).map((b: any) => ({
     id: b.id,
-    binNumber: b.bin_number,
-    classificationCode: b.classification_code,
-    description: b.description,
-    areaIds: b.area_ids,
+    binNumber: b.bin_number ?? b.binNumber ?? '',
+    classificationCode: b.classification_code ?? b.classificationCode,
+    description: b.description ?? '',
+    areaIds: b.area_ids ?? b.areaIds ?? null,
   }))) as Promise<Bin[]>;
 }
 
@@ -127,10 +126,10 @@ export function createBin(data: { binNumber: string; classificationCode: string;
     body: JSON.stringify(data),
   }).then(handleJsonResponse).then((b: any) => ({
     id: b.id,
-    binNumber: b.bin_number,
-    classificationCode: b.classification_code,
-    description: b.description,
-    areaIds: b.area_ids,
+    binNumber: b.bin_number ?? b.binNumber ?? '',
+    classificationCode: b.classification_code ?? b.classificationCode,
+    description: b.description ?? '',
+    areaIds: b.area_ids ?? b.areaIds ?? null,
   }));
 }
 

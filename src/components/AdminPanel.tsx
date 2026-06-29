@@ -129,7 +129,7 @@ export default function AdminPanel() {
                 </tr>
               </thead>
               <tbody>
-                {bins.map(b => (
+                {bins.filter(b => b.binNumber && b.binNumber.trim()).map(b => (
                   <tr key={b.id} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="py-2.5 pr-4 font-medium">{b.binNumber}</td>
                     <td className="py-2.5 pr-4 text-slate-600">{b.classificationCode}</td>
