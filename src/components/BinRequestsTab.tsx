@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BinRequest, REASONS } from '../types';
+import { BinRequest, REASONS, UNKNOWN_REASON } from '../types';
 import { getBinRequests, resolveBinRequest } from '../api';
 
 export default function BinRequestsTab() {
@@ -75,7 +75,7 @@ export default function BinRequestsTab() {
         ) : (
           <div className="divide-y divide-orange-50">
             {openRequests.map(req => {
-              const reasonInfo = REASONS[req.reason as keyof typeof REASONS];
+              const reasonInfo = REASONS[req.reason] ?? UNKNOWN_REASON;
               return (
                 <div key={req.id} className="flex items-center gap-4 px-6 py-4 hover:bg-orange-50/50">
                   <span className="text-2xl">{reasonInfo?.emoji || '⬜'}</span>
@@ -117,7 +117,7 @@ export default function BinRequestsTab() {
           </div>
           <div className="divide-y divide-slate-50">
             {resolvedRequests.slice(0, 20).map(req => {
-              const reasonInfo = REASONS[req.reason as keyof typeof REASONS];
+              const reasonInfo = REASONS[req.reason] ?? UNKNOWN_REASON;
               return (
                 <div key={req.id} className="flex items-center gap-4 px-6 py-3 text-slate-400">
                   <span className="text-lg">{reasonInfo?.emoji || '⬜'}</span>

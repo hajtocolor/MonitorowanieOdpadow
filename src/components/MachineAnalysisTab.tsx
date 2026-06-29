@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
 import { format, subDays } from 'date-fns';
-import { WasteEntry, AREAS } from '../types';
+import { WasteEntry } from '../types';
+import { getAreas } from '../api';
 import PeriodFilter from './PeriodFilter';
 
 interface Props {
@@ -18,6 +19,13 @@ const GRADIENT_COLORS = [
 export default function MachineAnalysisTab({ entries }: Props) {
   const [period, setPeriod] = useState(30);
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
+  const [areas, setAreas] = useState<{ id: string; label: string }[]>([]);
+
+  useEffect(() => {
+    getAreas()
+      .then(data => { if (data && data.length > 0) setAreas(data); })
+      .catch(() => {});
+  }, []);
 
   const filtered = useMemo(() => {
     const cutoff = format(subDays(new Date(), period), 'yyyy-MM-dd');
@@ -32,7 +40,7 @@ export default function MachineAnalysisTab({ entries }: Props) {
       .map((id, idx) => {
         const aEntries = filtered.filter(e => e.area === id);
         const totalKg = parseFloat(aEntries.reduce((s, e) => s + e.weightKg, 0).toFixed(1));
-        const areaInfo = AREAS.find(a => a.id === id);
+        const areaInfo = areas.find(a => a.id === id);
         return {
           id,
           label: areaInfo?.label ?? id,
@@ -157,7 +165,7 @@ export default function MachineAnalysisTab({ entries }: Props) {
           {selectedArea && selectedAreaWeekly && (
             <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-6">
               <h3 className="mb-4 font-bold text-indigo-900">
-                🔍 Szczegóły: {AREAS.find(a => a.id === selectedArea)?.label ?? selectedArea} – ostatnie 7 dni
+                🔍 Szczegóły: {areas.find(a => a.id === selectedArea)?.label ?? selectedArea} – ostatnie 7 dni
               </h3>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={selectedAreaWeekly} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>

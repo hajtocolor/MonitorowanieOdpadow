@@ -111,7 +111,13 @@ export function resolveBinRequest(id: string) {
 export function getBins() {
   return fetch(`${API_PREFIX}/bins`, {
     headers: buildHeaders(false),
-  }).then(handleJsonResponse) as Promise<Bin[]>;
+  }).then(handleJsonResponse).then((data: any[]) => (data ?? []).map((b: any) => ({
+    id: b.id,
+    binNumber: b.bin_number,
+    classificationCode: b.classification_code,
+    description: b.description,
+    areaIds: b.area_ids,
+  }))) as Promise<Bin[]>;
 }
 
 export function createBin(data: { binNumber: string; classificationCode: string; description?: string; areaIds?: string[] }) {
@@ -119,7 +125,13 @@ export function createBin(data: { binNumber: string; classificationCode: string;
     method: 'POST',
     headers: buildHeaders(true),
     body: JSON.stringify(data),
-  }).then(handleJsonResponse);
+  }).then(handleJsonResponse).then((b: any) => ({
+    id: b.id,
+    binNumber: b.bin_number,
+    classificationCode: b.classification_code,
+    description: b.description,
+    areaIds: b.area_ids,
+  }));
 }
 
 export function deleteBin(id: string) {

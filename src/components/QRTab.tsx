@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { REASONS, WasteReason, AREAS } from '../types';
+import { getAreas } from '../api';
 import QRCode from 'qrcode';
 
 const QR_BINS = [
@@ -69,9 +70,16 @@ function QRCodeImage({ url, label }: QRCodeImageProps) {
 }
 
 export default function QRTab() {
+  const [areas, setAreas] = useState<{ id: string; label: string }[]>(AREAS);
   const [selectedArea, setSelectedArea] = useState(AREAS[0]?.id || 'VSP');
   const [selectedBin, setSelectedBin] = useState<number | null>(null);
   const bin = selectedBin !== null ? QR_BINS[selectedBin] : null;
+
+  useEffect(() => {
+    getAreas()
+      .then(data => { if (data && data.length > 0) setAreas(data); })
+      .catch(() => {});
+  }, []);
 
   const appUrl = typeof window !== 'undefined'
     ? `${window.location.protocol}//${window.location.host}`
@@ -124,7 +132,7 @@ export default function QRTab() {
           🏭 Wybierz obszar
         </h3>
         <div className="flex flex-wrap gap-2">
-          {AREAS.map(a => (
+          {areas.map(a => (
             <button
               key={a.id}
               onClick={() => setSelectedArea(a.id)}

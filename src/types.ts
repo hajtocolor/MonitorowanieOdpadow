@@ -45,7 +45,17 @@ export const AREAS: Area[] = [
   { id: 'INTROFUN', label: 'Introfun' },
 ];
 
-export const REASONS: Record<WasteReason, { label: string; color: string; bg: string; border: string; emoji: string; binColor: string }> = {
+// Fallback dla starych wpisów z nieznaną przyczyną (np. 'blad_operatora' z poprzedniej wersji)
+export const UNKNOWN_REASON = {
+  label: 'Nieznana przyczyna',
+  color: 'text-slate-500',
+  bg: 'bg-slate-100',
+  border: 'border-slate-200',
+  emoji: '❓',
+  binColor: 'bg-slate-300',
+};
+
+export const REASONS: Record<string, { label: string; color: string; bg: string; border: string; emoji: string; binColor: string }> = {
   awaria: {
     label: 'Awaria maszyny',
     color: 'text-red-700',

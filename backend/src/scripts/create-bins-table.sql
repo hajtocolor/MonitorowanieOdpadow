@@ -5,15 +5,15 @@ CREATE TABLE IF NOT EXISTS bins (
   bin_number TEXT NOT NULL UNIQUE,
   classification_code TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
-  machine_ids TEXT[] DEFAULT NULL,
+  area_ids TEXT[] DEFAULT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Indeks dla szybkiego wyszukiwania po numerze pojemnika
 CREATE INDEX IF NOT EXISTS idx_bins_bin_number ON bins (bin_number);
 
--- Wstaw dane z pliku idpojemnika.md (wszystkie pojemniki bez przypisania do maszyny)
-INSERT INTO bins (id, bin_number, classification_code, description, machine_ids) VALUES
+-- Wstaw dane (wszystkie pojemniki bez przypisania do obszaru)
+INSERT INTO bins (id, bin_number, classification_code, description, area_ids) VALUES
 ('bin-0121A', '0121A', '15 01 05', 'Ścinki papieru zalaminowanego', NULL),
 ('bin-26', '26', '15 01 01', 'Pozostałości arkuszy tektury litej (szarej twardej) pod okładki do fotoksiążki', NULL),
 ('bin-27', '27', '15 01 05', 'Pozostałości arkuszy tektury z gąbką pod okładkę do fotoksiążki', NULL),
@@ -33,4 +33,12 @@ ON CONFLICT (id) DO UPDATE SET
   bin_number = EXCLUDED.bin_number,
   classification_code = EXCLUDED.classification_code,
   description = EXCLUDED.description,
-  machine_ids = EXCLUDED.machine_ids;
+  area_ids = EXCLUDED.area_ids;
+
+-- Dla istniejącej tabeli z kolumną machine_ids – zmień nazwę na area_ids
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'bins' AND column_name = 'machine_ids') THEN
+    ALTER TABLE bins RENAME COLUMN machine_ids TO area_ids;
+  END IF;
+END $$;

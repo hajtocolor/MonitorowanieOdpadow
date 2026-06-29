@@ -357,7 +357,7 @@ app.get('/api/bins', authenticateToken, async (_req, res) => {
     binNumber: b.bin_number,
     classificationCode: b.classification_code,
     description: b.description,
-    machineIds: b.machine_ids,
+    areaIds: b.area_ids,
   }));
 
   res.json(mapped);
@@ -365,7 +365,7 @@ app.get('/api/bins', authenticateToken, async (_req, res) => {
 
 // POST /api/bins — dodaj nowy pojemnik (admin)
 app.post('/api/bins', authenticateToken, requireRole(['admin']), async (req, res) => {
-  const { binNumber, classificationCode, description, machineIds } = req.body;
+  const { binNumber, classificationCode, description, areaIds } = req.body;
   if (!binNumber || typeof binNumber !== 'string' || !binNumber.trim()) {
     return res.status(400).json({ error: 'Nieprawidłowy numer pojemnika' });
   }
@@ -379,7 +379,7 @@ app.post('/api/bins', authenticateToken, requireRole(['admin']), async (req, res
     bin_number: binNumber.trim(),
     classification_code: classificationCode.trim(),
     description: description?.trim() || '',
-    machine_ids: machineIds || null,
+    area_ids: areaIds || null,
   }]).select();
 
   if (error) {
@@ -390,7 +390,7 @@ app.post('/api/bins', authenticateToken, requireRole(['admin']), async (req, res
     binNumber: binNumber.trim(),
     classificationCode: classificationCode.trim(),
     description: description?.trim() || '',
-    machineIds: machineIds || null,
+    areaIds: areaIds || null,
   });
 });
 

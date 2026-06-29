@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
-import { WasteEntry, WasteReason, AREAS, REASONS } from '../types';
+import { useMemo, useState, useEffect } from 'react';
+import { WasteEntry, WasteReason, REASONS, UNKNOWN_REASON } from '../types';
+import { getAreas } from '../api';
 import { format } from 'date-fns';
 
 interface Props {
@@ -15,6 +16,7 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
   const [page, setPage] = useState(1);
   const [confirmClear, setConfirmClear] = useState(false);
   const PAGE_SIZE = 25;
+  const [areaLabels, setAreaLabels] = useState<Record<string, string>>({});
 
   const filtered = useMemo(() => {
     return entries.filter(e => {
@@ -43,7 +45,7 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
       e.area,
       e.classificationNumber,
       e.binNumber,
-      REASONS[e.reason].label,
+      (REASONS[e.reason] ?? UNKNOWN_REASON).label,
       e.weightKg.toString().replace('.', ','),
       e.comment ?? '',
     ]);
@@ -58,6 +60,20 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
   };
 
   const allAreaIds = [...new Set(entries.map(e => e.area))].sort();
+
+  useEffect(() => {
+    getAreas()
+      .then(data => {
+        if (data && data.length > 0) {
+          const map: Record<string, string> = {};
+          data.forEach(a => { map[a.id] = a.label; });
+          setAreaLabels(map);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const areaLabelFor = (id: string) => areaLabels[id] ?? id;
 
   return (
     <div className="space-y-5">
@@ -122,10 +138,9 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
           className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
         >
           <option value="all">Wszystkie obszary</option>
-          {allAreaIds.map(id => {
-            const a = AREAS.find(a => a.id === id);
-            return <option key={id} value={id}>{a?.label ?? id}</option>;
-          })}
+                  {allAreaIds.map(id => (
+                    <option key={id} value={id}>{areaLabelFor(id)}</option>
+                  ))}
         </select>
       </div>
 
@@ -170,7 +185,7 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {paginated.map(entry => {
-                    const r = REASONS[entry.reason];
+                    const r = REASONS[entry.reason] ?? UNKNOWN_REASON;
                     return (
                       <tr key={entry.id} className="hover:bg-slate-50 transition">
                         <td className="px-5 py-3 text-slate-700 font-medium whitespace-nowrap">
@@ -208,7 +223,7 @@ export default function HistoryTab({ entries, deleteEntry, clearAll }: Props) {
             {/* Mobile cards */}
             <div className="md:hidden divide-y divide-slate-100">
               {paginated.map(entry => {
-                const r = REASONS[entry.reason];
+                const r = REASONS[entry.reason] ?? UNKNOWN_REASON;
                 return (
                   <div key={entry.id} className="px-4 py-3 flex items-start gap-3 hover:bg-slate-50">
                     <span className="text-xl mt-0.5">{r.emoji}</span>

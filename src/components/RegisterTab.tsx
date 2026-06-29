@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { WasteEntry, WasteReason, AREAS, REASONS, Bin } from '../types';
+import { WasteEntry, WasteReason, AREAS, REASONS, UNKNOWN_REASON, Bin } from '../types';
 import { useWasteStore } from '../store';
-import { getBins } from '../api';
+import { getBins, getAreas } from '../api';
 import { format } from 'date-fns';
 
 function getNow() {
@@ -53,6 +53,10 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
   const weightRef = useRef<HTMLInputElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Areas from backend (dynamic)
+  const [areas, setAreas] = useState<{ id: string; label: string }[]>(AREAS);
+  const [areasLoading, setAreasLoading] = useState(true);
+
   // Bins autocomplete
   const [bins, setBins] = useState<Bin[]>([]);
   const [binsLoading, setBinsLoading] = useState(true);
@@ -64,6 +68,15 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
         setBinsLoading(false);
       })
       .catch(() => setBinsLoading(false));
+
+    getAreas()
+      .then(data => {
+        if (data && data.length > 0) {
+          setAreas(data);
+        }
+        setAreasLoading(false);
+      })
+      .catch(() => setAreasLoading(false));
   }, []);
 
   // Auto-fill classification & filter bins when bin number changes
@@ -208,7 +221,7 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
                   className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-base font-medium text-slate-800 transition focus:border-blue-500 focus:bg-white focus:outline-none"
                 >
                   <option value="">— Wybierz obszar —</option>
-                  {AREAS.map(a => (
+                  {areas.map(a => (
                     <option key={a.id} value={a.id}>{a.label}</option>
                   ))}
                 </select>
@@ -426,7 +439,7 @@ export default function RegisterTab({ addEntry, entries, deleteEntry, canDelete 
         ) : (
           <div className="divide-y divide-slate-50">
             {todayEntries.slice(0, 20).map(entry => {
-              const r = REASONS[entry.reason];
+              const r = REASONS[entry.reason] ?? UNKNOWN_REASON;
               return (
                 <div key={entry.id} className="flex items-center gap-4 px-6 py-3 hover:bg-slate-50">
                   <span className="text-xl">{r.emoji}</span>
