@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell,
@@ -6,6 +6,7 @@ import {
 import { format, subDays } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { WasteEntry, WasteReason } from '../types';
+import PeriodFilter from './PeriodFilter';
 
 interface Props {
   entries: WasteEntry[];
@@ -18,21 +19,32 @@ const REASON_COLORS: Record<WasteReason, string> = {
 };
 
 export default function DashboardTab({ entries }: Props) {
+  const [period, setPeriod] = useState(7);
+
+  const filtered = useMemo(() => {
+    if (period <= 0) return entries; // wszystkie dane
+    const cutoff = format(subDays(new Date(), period), 'yyyy-MM-dd');
+    return entries.filter(e => e.date >= cutoff);
+  }, [entries, period]);
+
   const stats = useMemo(() => {
-    const total = entries.reduce((s, e) => s + e.weightKg, 0);
+    const total = filtered.reduce((s, e) => s + e.weightKg, 0);
     const byReason = {
-      awaria: entries.filter(e => e.reason === 'awaria').reduce((s, e) => s + e.weightKg, 0),
-      blad_operatora: entries.filter(e => e.reason === 'blad_operatora').reduce((s, e) => s + e.weightKg, 0),
-      procesowy: entries.filter(e => e.reason === 'procesowy').reduce((s, e) => s + e.weightKg, 0),
+      awaria: filtered.filter(e => e.reason === 'awaria').reduce((s, e) => s + e.weightKg, 0),
+      blad_operatora: filtered.filter(e => e.reason === 'blad_operatora').reduce((s, e) => s + e.weightKg, 0),
+      procesowy: filtered.filter(e => e.reason === 'procesowy').reduce((s, e) => s + e.weightKg, 0),
     };
 
-    // Last 7 days trend
-    const last7 = Array.from({ length: 7 }, (_, i) => {
-      const d = subDays(new Date(), 6 - i);
+    // Trend w wybranym okresie (zagęszczenie: max ~30 punktów na wykresie)
+    const daysToShow = period > 0 ? Math.min(period, 365) : 30;
+    const step = Math.max(1, Math.floor(daysToShow / 30));
+    const trend = Array.from({ length: Math.ceil(daysToShow / step) }, (_, i) => {
+      const dayOffset = daysToShow - 1 - i * step;
+      const d = subDays(new Date(), dayOffset);
       const dateStr = format(d, 'yyyy-MM-dd');
-      const dayEntries = entries.filter(e => e.date === dateStr);
+      const dayEntries = filtered.filter(e => e.date === dateStr);
       return {
-        day: format(d, 'EEE', { locale: pl }),
+        day: format(d, 'd.MM', { locale: pl }),
         date: dateStr,
         awaria: parseFloat(dayEntries.filter(e => e.reason === 'awaria').reduce((s, e) => s + e.weightKg, 0).toFixed(1)),
         blad_operatora: parseFloat(dayEntries.filter(e => e.reason === 'blad_operatora').reduce((s, e) => s + e.weightKg, 0).toFixed(1)),
@@ -43,11 +55,11 @@ export default function DashboardTab({ entries }: Props) {
 
     // Today
     const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const todayKg = entries.filter(e => e.date === todayStr).reduce((s, e) => s + e.weightKg, 0);
-    const todayCount = entries.filter(e => e.date === todayStr).length;
+    const todayKg = filtered.filter(e => e.date === todayStr).reduce((s, e) => s + e.weightKg, 0);
+    const todayCount = filtered.filter(e => e.date === todayStr).length;
 
-    // This week
-    const weekEntries = last7.reduce((s, d) => s + d.total, 0);
+    // Total in period
+    const periodEntries = trend.reduce((s, d) => s + d.total, 0);
 
     // Pie data
     const pieData = [
@@ -56,13 +68,13 @@ export default function DashboardTab({ entries }: Props) {
       { name: 'Procesowy', value: parseFloat(byReason.procesowy.toFixed(1)), color: REASON_COLORS.procesowy },
     ].filter(d => d.value > 0);
 
-    return { total, byReason, last7, todayKg, todayCount, weekEntries, pieData };
-  }, [entries]);
+    return { total, byReason, trend, todayKg, todayCount, periodEntries, pieData, daysToShow };
+  }, [filtered, period]);
 
   const kpiCards = [
     {
       label: 'Łącznie (wszystkie)',
-      value: `${stats.total.toFixed(1)} kg`,
+      value: `${entries.reduce((s, e) => s + e.weightKg, 0).toFixed(1)} kg`,
       sub: `${entries.length} zgłoszeń`,
       gradient: 'from-slate-700 to-slate-800',
       icon: '📦',
@@ -75,9 +87,9 @@ export default function DashboardTab({ entries }: Props) {
       icon: '📅',
     },
     {
-      label: 'Ostatnie 7 dni',
-      value: `${stats.weekEntries.toFixed(1)} kg`,
-      sub: 'bieżący tydzień',
+      label: `Wybrany okres`,
+      value: `${stats.periodEntries.toFixed(1)} kg`,
+      sub: stats.daysToShow > 0 ? `ostatnie ${stats.daysToShow} dni` : 'całość',
       gradient: 'from-indigo-500 to-violet-600',
       icon: '📈',
     },
@@ -104,8 +116,19 @@ export default function DashboardTab({ entries }: Props) {
     },
   ];
 
+  const periodLabel = stats.daysToShow > 0 ? `ostatnie ${stats.daysToShow} dni` : 'cały okres';
+
   return (
     <div className="space-y-6">
+      {/* Header & period filter */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-slate-800">📊 Dashboard</h2>
+          <p className="text-sm text-slate-500">Podsumowanie i analiza odpadów – {periodLabel}</p>
+        </div>
+        <PeriodFilter value={period} onChange={setPeriod} />
+      </div>
+
       {/* KPI CARDS */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {kpiCards.map(card => (
@@ -120,14 +143,14 @@ export default function DashboardTab({ entries }: Props) {
 
       {/* CHARTS ROW */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* 7-day bar chart */}
+        {/* Trend bar chart */}
         <div className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="mb-1 text-base font-bold text-slate-800">Odpady – ostatnie 7 dni (kg)</h3>
+          <h3 className="mb-1 text-base font-bold text-slate-800">Trend odpadów (kg) – {periodLabel}</h3>
           <p className="mb-4 text-xs text-slate-400">Podział na przyczyny według dnia</p>
           <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={stats.last7} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+            <BarChart data={stats.trend} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <Tooltip
                 contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }}
@@ -151,7 +174,7 @@ export default function DashboardTab({ entries }: Props) {
         {/* Pie */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col">
           <h3 className="mb-1 text-base font-bold text-slate-800">Podział według przyczyny</h3>
-          <p className="mb-4 text-xs text-slate-400">Cały okres historyczny (kg)</p>
+          <p className="mb-4 text-xs text-slate-400">{periodLabel} (kg)</p>
           {stats.pieData.length === 0 ? (
             <div className="flex flex-1 items-center justify-center text-slate-300 text-sm">Brak danych</div>
           ) : (
@@ -193,11 +216,11 @@ export default function DashboardTab({ entries }: Props) {
       {/* Trend line */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="mb-1 text-base font-bold text-slate-800">Trend dzienny – łącznie (kg)</h3>
-        <p className="mb-4 text-xs text-slate-400">Ostatnie 7 dni</p>
+        <p className="mb-4 text-xs text-slate-400">{periodLabel}</p>
         <ResponsiveContainer width="100%" height={160}>
-          <LineChart data={stats.last7} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
+          <LineChart data={stats.trend} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+            <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
             <Tooltip
               contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }}

@@ -4,16 +4,11 @@ import {
 } from 'recharts';
 import { format, subDays } from 'date-fns';
 import { WasteEntry, MACHINES, WasteReason } from '../types';
+import PeriodFilter from './PeriodFilter';
 
 interface Props {
   entries: WasteEntry[];
 }
-
-const PERIODS = [
-  { label: '7 dni', days: 7 },
-  { label: '14 dni', days: 14 },
-  { label: '30 dni', days: 30 },
-];
 
 const GRADIENT_COLORS = [
   '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316',
@@ -81,21 +76,7 @@ export default function MachineAnalysisTab({ entries }: Props) {
           <h2 className="text-xl font-bold text-slate-800">⚙️ Analiza według maszyny</h2>
           <p className="text-sm text-slate-500">Ranking maszyn generujących największe straty – aktualizuje się automatycznie</p>
         </div>
-        <div className="flex gap-2">
-          {PERIODS.map(p => (
-            <button
-              key={p.days}
-              onClick={() => setPeriod(p.days)}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                period === p.days
-                  ? 'bg-indigo-600 text-white shadow'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
+        <PeriodFilter value={period} onChange={setPeriod} />
       </div>
 
       {machineStats.length === 0 ? (

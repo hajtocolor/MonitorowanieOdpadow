@@ -5,16 +5,11 @@ import {
 import { format, subDays } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { WasteEntry, WasteReason, REASONS } from '../types';
+import PeriodFilter from './PeriodFilter';
 
 interface Props {
   entries: WasteEntry[];
 }
-
-const PERIODS = [
-  { label: '7 dni', days: 7 },
-  { label: '14 dni', days: 14 },
-  { label: '30 dni', days: 30 },
-];
 
 export default function ReasonAnalysisTab({ entries }: Props) {
   const [period, setPeriod] = useState(30);
@@ -56,15 +51,16 @@ export default function ReasonAnalysisTab({ entries }: Props) {
     });
   }, [filtered]);
 
-  // Most common comment per reason
-  const commentsByReason = useMemo(() => {
+  // Most common machines per reason
+  const machinesByReason = useMemo(() => {
     const reasons: WasteReason[] = ['awaria', 'blad_operatora', 'procesowy'];
     return Object.fromEntries(reasons.map(r => {
-      const comments = filtered
-        .filter(e => e.reason === r && e.comment)
-        .map(e => e.comment!);
+      const machineEntries = filtered.filter(e => e.reason === r && e.machineId);
       const freq: Record<string, number> = {};
-      comments.forEach(c => { freq[c] = (freq[c] || 0) + 1; });
+      machineEntries.forEach(e => {
+        const key = e.machineId;
+        freq[key] = (freq[key] || 0) + 1;
+      });
       const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 3);
       return [r, sorted];
     }));
@@ -78,21 +74,7 @@ export default function ReasonAnalysisTab({ entries }: Props) {
           <h2 className="text-xl font-bold text-slate-800">🤖 Analiza według przyczyny</h2>
           <p className="text-sm text-slate-500">Automatyczny podział odpadów na kategorie przyczyn</p>
         </div>
-        <div className="flex gap-2">
-          {PERIODS.map(p => (
-            <button
-              key={p.days}
-              onClick={() => setPeriod(p.days)}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                period === p.days
-                  ? 'bg-indigo-600 text-white shadow'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
+        <PeriodFilter value={period} onChange={setPeriod} />
       </div>
 
       {/* Summary cards */}
@@ -131,14 +113,14 @@ export default function ReasonAnalysisTab({ entries }: Props) {
                 style={{ width: `${r.pct}%` }}
               />
             </div>
-            {/* Top comments */}
-            {commentsByReason[r.reason]?.length > 0 && (
+            {/* Top machines */}
+            {machinesByReason[r.reason]?.length > 0 && (
               <div className="mt-3 space-y-1">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Najczęstsze komentarze</p>
-                {commentsByReason[r.reason].map(([comment, count]) => (
-                  <div key={comment} className="flex justify-between text-xs text-slate-600">
-                    <span className="truncate">{comment}</span>
-                    <span className="ml-2 shrink-0 font-semibold">{count}×</span>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Najczęstsze maszyny</p>
+                {machinesByReason[r.reason].map(([machineId, count]) => (
+                  <div key={machineId} className="flex justify-between text-xs text-slate-600">
+                    <span className="truncate font-medium">{machineId}</span>
+                    <span className="ml-2 shrink-0 font-semibold">{count} wpisów</span>
                   </div>
                 ))}
               </div>
